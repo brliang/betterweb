@@ -14,18 +14,30 @@ services:
       interval: 2s
       retries: 30
 
+  # Applies migrations, then exits; api and worker start after it succeeds.
+  migrate:
+    build: ./backend
+    command: alembic upgrade head
+    environment: &backend-env
+      DATABASE_URL: postgresql+psycopg://discovery:discovery@db:5432/discovery
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/migrations:/app/migrations
+    depends_on:
+      db:
+        condition: service_healthy
+
   api:
     build: ./backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    environment: &backend-env
-      DATABASE_URL: postgresql+psycopg://discovery:discovery@db:5432/discovery
+    environment: *backend-env
     ports:
       - "8000:8000"
     volumes:
       - ./backend/app:/app/app
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   # Not long-running: invoke with `docker compose run --rm worker cycle run`.
   worker:
@@ -34,8 +46,8 @@ services:
     environment: *backend-env
     profiles: [worker]
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   frontend:
     image: node:24-alpine

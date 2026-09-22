@@ -11,6 +11,8 @@ The full design and milestone list is in [docs/PLAN.md](docs/PLAN.md).
 | Path | What |
 |---|---|
 | `backend/` | Python 3.12 · FastAPI · uv. `app/` is the API; `app/worker` is the nightly crawl CLI. |
+| `backend/app/db/` | SQLAlchemy models for the `web` (shared graph) and `usr` (user store) schemas |
+| `backend/migrations/` | Alembic migrations, including the DB roles that keep the schemas apart |
 | `frontend/` | React 19 · TypeScript · Vite · TanStack Query · Tailwind CSS v4 |
 | `openapi.json` | Exported API schema (generated, committed) |
 | `frontend/src/api/generated/` | Typed client + hooks from orval (generated, committed) |
@@ -24,12 +26,15 @@ and Docker (on macOS, [OrbStack](https://orbstack.dev) works well).
 
 ```sh
 make install        # backend + frontend dependencies
+docker compose up -d db   # Postgres + pgvector; backend tests need it
+make migrate        # apply migrations to DATABASE_URL
+make migration name="add foo"   # autogenerate the next migration from model changes
 make check          # ruff, mypy, pytest, prettier, eslint, tsc
 make format         # auto-fix formatting (ruff, prettier)
 make codegen        # re-export openapi.json and regenerate the TS client
 make dev-api        # FastAPI on :8000
 make dev-web        # Vite on :5173, proxying /api -> :8000
-docker compose up   # Postgres (pgvector) + API + frontend
+docker compose up   # Postgres (pgvector), migrations, API, frontend
 docker compose run --rm worker cycle run
 ```
 

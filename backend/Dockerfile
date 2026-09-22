@@ -16,6 +16,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=.python-version,target=.python-version \
     uv sync --locked --no-dev --no-install-project
 
+COPY pyproject.toml ./
+COPY migrations ./migrations
 COPY app ./app
 
 RUN useradd --system --uid 10001 app

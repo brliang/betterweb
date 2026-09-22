@@ -19,6 +19,20 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    services:
+      # Same image and credentials as the Compose db; tests create their own database in it.
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: discovery
+          POSTGRES_PASSWORD: discovery
+          POSTGRES_DB: discovery
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U discovery -d discovery"
+          --health-interval 2s
+          --health-retries 30
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0
