@@ -1,8 +1,7 @@
-from typing import Literal
-
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
-from pydantic import BaseModel
+
+from app.api import health
 
 
 def _operation_id(route: APIRoute) -> str:
@@ -10,13 +9,12 @@ def _operation_id(route: APIRoute) -> str:
     return route.name
 
 
-app = FastAPI(title="Discovery Engine", version="0.1.0", generate_unique_id_function=_operation_id)
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="Discovery Engine", version="0.1.0", generate_unique_id_function=_operation_id
+    )
+    app.include_router(health.router)
+    return app
 
 
-class Health(BaseModel):
-    status: Literal["ok"]
-
-
-@app.get("/health")
-def health() -> Health:
-    return Health(status="ok")
+app = create_app()

@@ -44,3 +44,15 @@ def test_rejects_out_of_range(monkeypatch: pytest.MonkeyPatch, name: str, value:
     monkeypatch.setenv(name.upper(), value)
     with pytest.raises(ValidationError):
         Settings(_env_file=None)
+
+
+def test_database_url_is_masked() -> None:
+    s = Settings(_env_file=None)
+    assert "discovery:discovery" not in repr(s)
+    assert s.database_url.get_secret_value().startswith("postgresql+psycopg://")
+
+
+def test_fields_are_documented() -> None:
+    assert Settings.model_fields["max_internal_depth"].description == (
+        "Link-clicks within one domain from its entry point."
+    )

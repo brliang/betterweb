@@ -1,4 +1,4 @@
-.PHONY: install codegen check-codegen lint typecheck test check dev-api dev-web
+.PHONY: install codegen check-codegen format lint typecheck test check dev-api dev-web
 
 GENERATED := openapi.json frontend/src/api/generated
 
@@ -16,9 +16,13 @@ check-codegen: codegen
 	test -z "$$(git ls-files --others --exclude-standard -- $(GENERATED))" || \
 	(echo "Generated client is stale: run 'make codegen' and commit the result." && exit 1)
 
+format:
+	cd backend && uv run ruff check --fix . && uv run ruff format .
+	cd frontend && npm run format
+
 lint:
 	cd backend && uv run ruff check . && uv run ruff format --check .
-	cd frontend && npm run lint
+	cd frontend && npm run format:check && npm run lint
 
 typecheck:
 	cd backend && uv run mypy

@@ -29,16 +29,17 @@ This document is the source of truth for implementation. Work through V0 milesto
 | Backend | Python 3.12, FastAPI, Pydantic v2 |
 | DB | PostgreSQL 16 + pgvector |
 | ORM / migrations | SQLAlchemy 2.x + Alembic |
-| Fetching | httpx (async), asyncio |
+| Fetching | httpx2 (async; the maintained successor to httpx), asyncio |
 | Feeds | feedparser |
 | HTML extraction | trafilatura |
 | PDF extraction | pypdf (or pdfminer.six) |
 | Graph math | scipy.sparse (power iteration) |
 | Embeddings | Hosted via HuggingFace Inference (behind `EmbeddingProvider` interface) |
 | LLM summaries | Hosted via OpenRouter (behind `LLMProvider` interface) |
-| Frontend | React + TypeScript + Vite, TanStack Query |
+| Frontend | React 19 + TypeScript + Vite, TanStack Query, React Compiler |
+| Styling | Tailwind CSS v4 |
 | Typed client | FastAPI's generated OpenAPI schema → **orval** → TypeScript client + TanStack Query hooks |
-| Tooling | uv, ruff, mypy (strict), pytest; eslint + tsc on frontend |
+| Tooling | uv, ruff, mypy (strict), pytest; prettier + eslint + tsc on frontend |
 | Local dev | Docker Compose (Postgres + API + worker + frontend) |
 
 **Typed client rule:** the frontend never hand-writes API types. A `make codegen` (or equivalent) script exports the OpenAPI schema and regenerates the client. CI fails if the generated client is stale, so a backend model change that breaks the frontend fails the type-check.

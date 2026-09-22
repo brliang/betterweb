@@ -12,7 +12,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
+    "httpx2>=2.13.0",
     "mypy>=2.3.1",
     "pytest>=9.1.1",
     "ruff>=0.16.8",
@@ -23,7 +23,27 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "ASYNC", "PT"]
+select = [
+    "E", "W", "F",  # pycodestyle, pyflakes
+    "I",            # import sorting
+    "B",            # bugbear
+    "UP",           # pyupgrade
+    "SIM", "C4", "RET", "PTH",  # simplify, comprehensions, returns, pathlib
+    "RUF",
+    "ASYNC",        # blocking calls in async code
+    "DTZ",          # timezone-naive datetimes
+    "S",            # bandit security checks
+    "T20",          # print(); use logging
+    "TID",          # banned (relative parent) imports
+    "FAST",         # FastAPI idioms (Annotated dependencies, redundant response_model)
+    "PT",           # pytest style
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]  # assert is how pytest works
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
 
 [tool.mypy]
 strict = true
@@ -39,4 +59,10 @@ warn_required_dynamic_aliases = true
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers"
+addopts = "-ra --strict-markers --strict-config"
+xfail_strict = true
+filterwarnings = [
+    "error",
+    # Upstream (starlette 1.6.0 TestClient): remove once starlette stops using the old alias.
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+]

@@ -7,14 +7,19 @@ Each field can be overridden by an environment variable of the same name, case-i
 from datetime import time
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore", frozen=True)
+    model_config = SettingsConfigDict(
+        env_file=".env", extra="ignore", frozen=True, use_attribute_docstrings=True
+    )
 
-    database_url: str = "postgresql+psycopg://discovery:discovery@localhost:5432/discovery"
+    database_url: SecretStr = SecretStr(
+        "postgresql+psycopg://discovery:discovery@localhost:5432/discovery"
+    )
+    """Contains a password, so it is masked in logs and reprs; read with .get_secret_value()."""
 
     # Crawl reach
     max_internal_depth: int = Field(default=5, ge=0)

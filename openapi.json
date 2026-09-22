@@ -38,7 +38,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Health"
+        "summary": "Health",
+        "tags": [
+          "health"
+        ]
       }
     }
   }

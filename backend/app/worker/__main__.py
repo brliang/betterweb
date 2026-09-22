@@ -4,7 +4,10 @@ The nightly crawl cycle (PLAN.md §6.1) is wired up in milestone M10; stages lan
 """
 
 import argparse
+import logging
 import sys
+
+logger = logging.getLogger("app.worker")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -15,9 +18,10 @@ def main(argv: list[str] | None = None) -> int:
     cycle_commands.add_parser("run", help="run all cycle stages")
 
     parser.parse_args(argv)
-    print("cycle run: not implemented yet (milestone M10)", file=sys.stderr)
+    logger.error("cycle run: not implemented yet (milestone M10)")
     return 1
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     sys.exit(main())

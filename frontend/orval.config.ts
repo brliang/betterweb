@@ -12,6 +12,11 @@ export default defineConfig({
       httpClient: 'fetch',
       baseUrl: '/api',
       clean: true,
+      override: {
+        // Return the response body directly and throw ApiError on non-2xx (see fetcher.ts).
+        mutator: { path: './src/api/fetcher.ts', name: 'apiFetch' },
+        fetch: { includeHttpResponseReturnType: false },
+      },
     },
   },
 })
