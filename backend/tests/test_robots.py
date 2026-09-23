@@ -8,7 +8,7 @@ from tests.fake_web import FakeWeb, redirect
 
 pytestmark = pytest.mark.anyio
 
-AGENT = "DiscoveryBot/0.1 (+https://bot.example/about)"
+AGENT = "bribot/0.1 (+https://bot.example/about)"
 ROBOTS_URL = "https://example.com/robots.txt"
 
 
@@ -27,8 +27,8 @@ ROBOTS_URL = "https://example.com/robots.txt"
         ("User-agent: *\nDisallow: /*.pdf$", "/paper.pdf", False),
         ("User-agent: *\nDisallow: /*.pdf$", "/paper.pdf.html", True),
         # A group for our product token beats the * group.
-        ("User-agent: *\nDisallow: /\n\nUser-agent: DiscoveryBot\nAllow: /", "/a", True),
-        ("User-agent: *\nAllow: /\n\nUser-agent: discoverybot\nDisallow: /", "/a", False),
+        ("User-agent: *\nDisallow: /\n\nUser-agent: bribot\nAllow: /", "/a", True),
+        ("User-agent: *\nAllow: /\n\nUser-agent: BRIBOT\nDisallow: /", "/a", False),
         ("User-agent: OtherBot\nDisallow: /", "/a", True),
     ],
 )

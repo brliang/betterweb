@@ -23,7 +23,7 @@ pytestmark = pytest.mark.anyio
 
 SETTINGS_OPTIONS: dict[str, object] = {
     "_env_file": None,
-    "user_agent": "DiscoveryBot/0.1 (+https://bot.example/about)",
+    "user_agent": "bribot/0.1 (+https://bot.example/about)",
     "per_domain_min_delay_s": 0,
     "domain_backoff_max_s": 0,
 }
@@ -183,7 +183,10 @@ async def test_the_next_cycle_uses_conditional_gets(session: AsyncSession) -> No
                 ),
                 httpx2.Response(304),
             ],
-            "https://example.com/post": [html("first"), html("second")],
+            "https://example.com/post": [
+                html("first"),
+                html("second", **{"x-robots-tag": "noindex"}),
+            ],
         }
     )
     await add_seed(session, HOME, settings(), [FEED])
@@ -207,7 +210,7 @@ async def test_the_next_cycle_uses_conditional_gets(session: AsyncSession) -> No
     assert (post.fetch_count, post.change_count) == (2, 1)
     raw = await session.get(RawPage, post.id, populate_existing=True)
     assert raw is not None
-    assert (raw.body, raw.cycle_id) == (b"second", second.id)
+    assert (raw.body, raw.cycle_id, raw.robots_tag) == (b"second", second.id, "noindex")
 
 
 async def test_redirects_go_through_the_frontier(session: AsyncSession) -> None:

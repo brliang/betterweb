@@ -42,9 +42,10 @@ class Settings(BaseSettings):
     per_domain_concurrency: int = Field(default=1, ge=1)
     global_concurrency: int = Field(default=50, ge=1)
     max_page_bytes: int = Field(default=5 * 1024 * 1024, gt=0)
-    user_agent: str = "DiscoveryBot/0.1 (+https://example.invalid/bot)"
-    """Placeholder until the project name and bot contact page exist (PLAN.md §14 Q5); the
-    worker refuses to crawl while it points at example.invalid."""
+    user_agent: str = "bribot/0.1 (+https://example.invalid/bot)"
+    """The contact URL is a placeholder until the bot's contact page exists (PLAN.md §14 Q5);
+    the worker refuses to crawl while it points at example.invalid. The product token before
+    the `/` is the name robots.txt groups and robots meta tags address."""
     fetch_timeout_s: float = Field(default=30, gt=0)
     robots_ttl_h: float = Field(default=24, gt=0)
     """How long a fetched robots.txt is trusted before it is fetched again."""
@@ -91,6 +92,25 @@ class Settings(BaseSettings):
     sitemap_max_external_hops: int = Field(default=0, ge=0)
     """Sitemaps are polled only for domains this close to a seed; a big external site's
     sitemap would otherwise flood the frontier."""
+
+    # Extraction and dedup (PLAN.md §6.3)
+    extract_max_text_chars: int = Field(default=200_000, ge=1)
+    """Extracted text beyond this is cut off before it is stored."""
+    extract_excerpt_chars: int = Field(default=300, ge=1)
+    """Excerpt length when the page offers no description of its own."""
+    extract_max_links_per_page: int = Field(default=500, ge=0)
+    """Links kept per page, in page order; they become graph edges and frontier candidates."""
+    extract_anchor_max_chars: int = Field(default=200, ge=0)
+    """Anchor text stored per link."""
+    extract_field_max_chars: int = Field(default=500, ge=1)
+    """Longest title or author stored; longer ones are cut off."""
+    pdf_max_pages: int = Field(default=50, ge=1)
+    """PDF pages read for text."""
+    dedup_min_confidence: float = Field(default=0.9, ge=0, le=1)
+    """A dedup strategy's match counts only at or above this confidence."""
+    dedup_hash_min_words: int = Field(default=50, ge=1)
+    """Texts shorter than this never match by hash: short pages ("Page not found", a video's
+    empty body) would otherwise all merge into one document."""
 
     # Personalized PageRank
     ppr_damping: float = Field(default=0.85, gt=0, lt=1)

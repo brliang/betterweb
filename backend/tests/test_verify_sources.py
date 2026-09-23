@@ -8,7 +8,7 @@ from scripts.verify_sources import RobotsCache, check
 
 pytestmark = pytest.mark.anyio
 
-USER_AGENT = "DiscoveryBot/0.1 (+https://example.invalid/bot)"
+USER_AGENT = "bribot/0.1 (+https://example.invalid/bot)"
 NOW = datetime(2026, 9, 23, tzinfo=UTC)
 SOURCE = SuggestedSource.model_validate(
     {
@@ -46,7 +46,7 @@ async def test_healthy_source_passes() -> None:
 @pytest.mark.parametrize(
     ("robots", "problem"),
     [
-        ("User-agent: DiscoveryBot\nDisallow: /\n", "robots.txt disallows"),
+        ("User-agent: bribot\nDisallow: /\n", "robots.txt disallows"),
         (
             "User-agent: *\nDisallow: /feed.xml\n",
             "robots.txt disallows https://example.com/feed.xml",

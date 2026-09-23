@@ -33,6 +33,8 @@ def test_defaults_match_plan() -> None:
     assert s.domain_prior_weight == 1.0
     assert s.sitemap_max_external_hops == 0
     assert {"utm_*", "fbclid", "gclid", "ref", "mc_*"} <= set(s.tracking_params)
+    assert s.user_agent.startswith("bribot/")
+    assert s.dedup_min_confidence == 0.9
 
 
 def test_env_overrides(monkeypatch: pytest.MonkeyPatch) -> None:

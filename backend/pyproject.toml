@@ -14,7 +14,9 @@ dependencies = [
     "psycopg[binary]>=3.3.6",
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
+    "pypdf>=6.19.0",
     "sqlalchemy[asyncio]>=2.0.54",
+    "trafilatura>=2.2.0",
     "uvicorn[standard]>=0.53.0",
 ]
 
@@ -24,6 +26,7 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.16.8",
     "types-defusedxml>=0.7.0",
+    "types-lxml>=2026.2.16",
 ]
 
 [tool.ruff]

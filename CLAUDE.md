@@ -24,6 +24,10 @@ same checks.
   included, goes through its domain's robots.txt check and `DomainGate`; never add a request
   path that skips them, and never follow redirects inline. Tests use `tests/fake_web.py`, never
   the network. URLs are stored only in `app.crawl.urls.canonicalize` form.
+- Extraction (`app/ingest/`) honors `noindex`/`nofollow` (robots meta tags and X-Robots-Tag)
+  and rel=nofollow/ugc/sponsored links. New classifiers, extractors and dedup strategies plug
+  into the registries there. Test pages in `tests/fixtures/pages/` are real, redistributable
+  pages saved with `scripts.capture_page`; record each one's license in the manifest.
 - Repo data lives in `backend/data/`: the vendored IAB file (never edit it; change
   `adaptation.toml`), generated `descriptions.json` (rerun `scripts.describe_topics` after any
   adaptation change; a test fails when it is stale), and `suggested_sources.toml` (run
@@ -109,3 +113,6 @@ same checks.
 - M3 (fetcher + frontier): done. `cycle run` runs the fetch stage (resumable; see PLAN.md
   §6.1-6.2) and refuses the placeholder `USER_AGENT`. Fetched bodies wait in `web.raw_pages`
   for M4's extract stage. URL canonicalization moved into M3; M4 adds rel=canonical.
+- M4 (extract + classify + dedup): done. `cycle run` runs fetch then extract; the extract
+  stage also follows links (so the crawl reaches one link level further per cycle) and
+  dedups. The bot is named `bribot`; its contact page (§14 Q5) is still open.

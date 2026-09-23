@@ -1,0 +1,129 @@
+# Real pages saved with `uv run python -m scripts.capture_page URL NAME` (bodies are NAME.gz),
+# for the extraction tests. Each is redistributable under the license noted; `expected` holds
+# what the classifier and extractors must produce for it. Optional expectations, checked only
+# when present: author, published (a date), contains (a phrase of the main text),
+# excerpt_start and min_links.
+
+[[page]]
+name = "wikipedia_pagerank"
+url = "https://en.wikipedia.org/wiki/PageRank"
+content_type = "text/html"
+charset = "utf-8"
+fetched_at = "2026-09-23"
+license = "CC BY-SA 4.0 (Wikipedia contributors)"
+
+[page.expected]
+type = "article"
+classifier = "schema_org"
+title = "PageRank"
+language = "en"
+published = "2001-11-05"
+contains = "PageRank (PR) is an algorithm used by Google Search to rank web pages"
+min_words = 5000
+min_links = 300
+
+[[page]]
+name = "wikipedia_talk_pagerank"
+url = "https://en.wikipedia.org/wiki/Talk:PageRank"
+content_type = "text/html"
+charset = "utf-8"
+fetched_at = "2026-09-23"
+license = "CC BY-SA 4.0 (Wikipedia contributors)"
+
+[page.expected]
+type = "thread"
+classifier = "url"
+title = "Talk:PageRank"
+language = "en"
+contains = "External links modified"
+min_words = 1000
+min_links = 100
+
+[[page]]
+name = "mozilla_hacks_jpeg_xl"
+url = "https://hacks.mozilla.org/2026/08/intent-to-ship-jpeg-xl/"
+content_type = "text/html"
+charset = "utf-8"
+fetched_at = "2026-09-23"
+license = "CC BY-SA 3.0 (Mozilla Hacks)"
+
+[page.expected]
+type = "post"
+classifier = "dated_path"
+title = "Intent to Ship: JPEG XL"
+language = "en"
+author = "Jake Archibald"
+published = "2026-08-24"
+contains = "new image formats land in browsers"
+min_words = 400
+excerpt_start = "A JPEG XL decoder is heading for Firefox 157!"
+min_links = 10
+
+[[page]]
+name = "arxiv_attention"
+url = "https://arxiv.org/abs/1706.03762"
+content_type = "text/html"
+charset = "utf-8"
+fetched_at = "2026-09-23"
+license = "CC0 1.0 (arXiv metadata, abstract included)"
+
+[page.expected]
+type = "paper"
+classifier = "url"
+title = "Attention Is All You Need"
+language = "en"
+author = "Vaswani, Ashish"
+published = "2017-06-12"
+contains = "The dominant sequence transduction models"
+min_words = 150
+excerpt_start = "The dominant sequence transduction models"
+min_links = 30
+
+[[page]]
+name = "archive_popeye"
+url = "https://archive.org/details/Popeye_forPresident"
+content_type = "text/html"
+charset = "utf-8"
+fetched_at = "2026-09-23"
+license = "Public domain (the film's item page, marked public domain by the Internet Archive)"
+
+[page.expected]
+type = "video"
+classifier = "schema_org"
+title = "Popeye for President : Paramount Pictures : Free Download, Borrow, and Streaming"
+language = "en"
+min_words = 0
+excerpt_start = "Popeye and Bluto are both running for president."
+min_links = 50
+
+[[page]]
+name = "gnu_free_software"
+url = "https://www.gnu.org/philosophy/free-sw.en.html"
+content_type = "text/html"
+charset = "utf-8"
+fetched_at = "2026-09-23"
+license = "CC BY-ND 4.0 (Free Software Foundation; verbatim copy)"
+
+[page.expected]
+type = "page"
+classifier = "fallback"
+title = "What is Free Software?"
+language = "en"
+contains = "means software that respects users' freedom and community"
+min_words = 3000
+min_links = 50
+
+[[page]]
+name = "irs_form_w4"
+url = "https://www.irs.gov/pub/irs-pdf/fw4.pdf"
+content_type = "application/pdf"
+fetched_at = "2026-09-23"
+license = "Public domain (US federal government work)"
+
+[page.expected]
+type = "pdf"
+classifier = "content_type"
+title = "2026 Form W-4"
+published = "2025-12-11"
+contains = "Employee’s Withholding Certificate"
+min_words = 3000

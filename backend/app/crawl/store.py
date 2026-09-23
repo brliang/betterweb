@@ -352,6 +352,7 @@ class CrawlStore:
             "fetched_at": now,
             "content_type": result.content_type or "",
             "charset": result.charset,
+            "robots_tag": result.robots_tag,
             "body": result.body,
         }
         insert = pg_insert(RawPage).values(values)

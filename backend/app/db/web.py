@@ -231,6 +231,8 @@ class RawPage(Base):
     """The media type from the Content-Type header, lowercase, without parameters."""
     charset: Mapped[str | None]
     """The charset parameter of the Content-Type header, if any."""
+    robots_tag: Mapped[str | None]
+    """X-Robots-Tag headers, one per line; `noindex` and `nofollow` are honored."""
     body: Mapped[bytes] = mapped_column(sa.LargeBinary)
 
 

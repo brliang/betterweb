@@ -49,6 +49,20 @@ async def test_ok_page() -> None:
     )
 
 
+async def test_x_robots_tag_headers_are_kept_one_per_line() -> None:
+    response = httpx2.Response(
+        200,
+        content=b"x",
+        headers=[
+            ("content-type", "application/pdf"),
+            ("x-robots-tag", "noindex"),
+            ("x-robots-tag", "otherbot: nofollow, noarchive"),
+        ],
+    )
+    assert (await get(response)).robots_tag == "noindex\notherbot: nofollow, noarchive"
+    assert (await get(html())).robots_tag is None
+
+
 async def test_identifies_itself_and_sends_validators() -> None:
     web = FakeWeb({URL: httpx2.Response(304)})
     result = await get(web, etag='"v1"', last_modified="Tue, 22 Sep 2026")

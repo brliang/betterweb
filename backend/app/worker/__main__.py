@@ -1,7 +1,8 @@
 """Worker CLI: ``python -m app.worker <command>``.
 
 - ``cycle run``: run (or resume) the nightly crawl cycle (PLAN.md §6.1). Stages so far: fetch
-  (M3); extract, dedup, embed and scores land in M4-M6, and M10 adds scheduling and alerts.
+  (M3), then extract + dedup (M4); embed and scores land in M5-M6, and M10 adds scheduling
+  and alerts.
 - ``frontier seed URL [--feed FEED ...]``: enqueue a homepage as a pinned seed (for development;
   the API does this when a user pins a domain).
 - ``taxonomy seed``: load the adapted taxonomy into web.topics (idempotent).
@@ -20,6 +21,7 @@ from app.crawl.fetch_stage import run_fetch_stage
 from app.crawl.frontier import SeedError, add_seed
 from app.crawl.http import create_client
 from app.db.session import create_engine, create_sessionmaker
+from app.ingest.stage import run_extract_stage
 from app.providers.embeddings import OpenRouterEmbeddings
 from app.providers.openrouter import OpenRouterClient, ProviderError
 from app.settings import Settings, get_settings
@@ -56,6 +58,8 @@ async def run_cycle(settings: Settings) -> None:
                 cycle = await start_or_resume_cycle(session, settings)
                 logger.info("crawl cycle %d: fetch stage", cycle.id)
                 await run_fetch_stage(session, cycle, client, settings)
+                logger.info("crawl cycle %d: extract stage", cycle.id)
+                await run_extract_stage(session, cycle, settings)
                 await finish_cycle(session, cycle)
                 logger.info("crawl cycle %d finished", cycle.id)
     finally:
@@ -151,4 +155,8 @@ def main(argv: list[str] | None = None) -> int:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     logging.getLogger("httpx2").setLevel(logging.WARNING)  # one line per request otherwise
+    # Per-page notes ("discarding data", missing optional font tools) that the extract
+    # stage's counts already cover.
+    for noisy in ("trafilatura", "htmldate", "pypdf"):
+        logging.getLogger(noisy).setLevel(logging.ERROR)
     sys.exit(main())

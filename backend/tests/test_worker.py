@@ -17,7 +17,7 @@ def no_api_key(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
 @pytest.fixture
 def placeholder_user_agent(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    monkeypatch.setenv("USER_AGENT", "DiscoveryBot/0.1 (+https://example.invalid/bot)")
+    monkeypatch.setenv("USER_AGENT", "bribot/0.1 (+https://example.invalid/bot)")
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()

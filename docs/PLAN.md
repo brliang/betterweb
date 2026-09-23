@@ -102,7 +102,7 @@ Use two Postgres schemas: `web` (shared graph) and `usr` (user store).
 - **`frontier`**
   - Fields: `url_id` (unique), `internal_depth`, `external_hops`, `priority`, `reason` (`new` | `recrawl`), `next_fetch_at`, `enqueued_at`, `cycle_id` (the cycle whose plan includes the entry; cleared when fetched), `failures` (transient failures in a row).
   - Crawl state per URL: a fetched URL keeps its entry as a `recrawl`, so its depth is known when its links are followed. A URL that was fetched and then dropped (gone, rejected, moved permanently, failing) has no entry and is never enqueued again.
-- **`raw_pages`**: `url_id`, `cycle_id`, `fetched_at`, `content_type`, `charset`, `body`. New or changed bodies from the fetch stage, waiting for the extract stage, which deletes them.
+- **`raw_pages`**: `url_id`, `cycle_id`, `fetched_at`, `content_type`, `charset`, `robots_tag` (X-Robots-Tag headers), `body`. New or changed bodies from the fetch stage, waiting for the extract stage, which deletes them.
 - **`dedup_decisions`**
   - Fields: `id`, `url_id`, `document_id`, `method`, `confidence`, `details jsonb`, `created_at`.
   - Append-only log of every URL→Document merge, so strategies can be audited and tuned.
@@ -162,7 +162,7 @@ All of these live in one Pydantic settings module and can be overridden via envi
 | `RECENCY_HALF_LIFE_DAYS` | 7 | Longer for evergreen types (paper, PDF) |
 | `MAX_PER_DOMAIN_PER_PAGE` | 2 | Diversity cap per 20 results |
 | `PROVIDER_MONTHLY_SPEND_CAP_USD` | 40 | Hard stop on embedding + LLM spend |
-| `USER_AGENT` | `<name>Bot/0.1 (+https://<project-url>/bot)` | Contact page required |
+| `USER_AGENT` | `bribot/0.1 (+https://<project-url>/bot)` | Contact page required |
 | `ROBOTS_TTL_H` | 24 | robots.txt refresh interval |
 | `RECRAWL_AFTER_H` | 20 | A fetched URL is due for re-crawl after this (under a day, so each nightly cycle sees it) |
 | `DOMAIN_BACKOFF_MAX_S` / `DOMAIN_MAX_CONSECUTIVE_ERRORS` | 600 / 5 | Per-domain backoff cap; errors in a row before skipping the domain this cycle |
@@ -170,6 +170,9 @@ All of these live in one Pydantic settings module and can be overridden via envi
 | `DOMAIN_PRIOR_WEIGHT` | 1.0 | λ in the frontier priority (§6.2) |
 | `TRACKING_PARAMS` | `utm_*`, `mc_*`, `fbclid`, `gclid`, `ref`, … | Removed by canonicalization |
 | `FEED_MAX_ITEMS` / `SITEMAP_MAX_URLS_PER_DOMAIN` / `SITEMAP_MAX_FILES_PER_DOMAIN` / `SITEMAP_MAX_AGE_DAYS` / `SITEMAP_MAX_EXTERNAL_HOPS` | 100 / 500 / 10 / 30 / 0 | Feed and sitemap polling caps (§6.1) |
+| `EXTRACT_MAX_TEXT_CHARS` / `EXTRACT_EXCERPT_CHARS` / `EXTRACT_FIELD_MAX_CHARS` | 200,000 / 300 / 500 | Stored text, excerpt, and title/author lengths (§6.3) |
+| `EXTRACT_MAX_LINKS_PER_PAGE` / `EXTRACT_ANCHOR_MAX_CHARS` / `PDF_MAX_PAGES` | 500 / 200 / 50 | Links kept per page, anchor text length, PDF pages read |
+| `DEDUP_MIN_CONFIDENCE` / `DEDUP_HASH_MIN_WORDS` | 0.9 / 50 | A strategy's match must reach this confidence; shorter texts never match by hash |
 
 ---
 
@@ -193,6 +196,8 @@ A **crawl cycle** is one nightly batch run with a fixed page budget, recorded in
    3. Unfetched entries stay in the frontier for the next cycle.
 2. **Extract/Classify**: determine the document type and extract text and metadata (§6.3).
 3. **Dedup**: map each URL to a Document (§6.3).
+   - Steps 2 and 3 run as one pass (`app.ingest.stage`), one transaction per raw page: the page's document, links, frontier candidates and dedup decisions are written and its raw page deleted together, so a killed stage resumes with the pages still waiting. CPU-bound extraction runs in a worker thread.
+   - This pass also **follows links**: a page's links are enqueued one step further from its frontier position (§6.2). Links are followed only when a page is new or changed, and a URL they add is fetched in the next cycle, so the crawl reaches one link level deeper per cycle; feeds and sitemaps (depth 0) are found every cycle.
 4. **Embed + Tag**: embed new or changed documents, then assign topics (§6.4).
 5. **Scores**: compute global PageRank, domain scores and per-user PPR, then refresh user profile vectors (§6.5).
 
@@ -244,10 +249,23 @@ priority(url) = Σ_{p ∈ known parents} global_pr(p) / outdegree(p)  +  λ · d
 - `og:type` and schema.org `@type`.
 - URL patterns (`/comments/`, `/thread/`, arXiv, `.gov` publication paths).
 - The feed item's own type.
+- As built (`app.ingest.classify`), the classifiers are asked in this order, and the first that recognizes the page decides:
+  1. URL patterns (paper repositories, `.gov` publications, thread and video sites), which win over the content type, so an arXiv PDF is a `paper`.
+  2. The content type (`pdf`).
+  3. `citation_title` meta tags (Google Scholar), which mark papers.
+  4. schema.org types (JSON-LD and microdata), most specific first.
+  5. `og:type`.
+  6. A dated permalink (`/2026/08/title/`), which marks a blog `post`.
+  Anything else is a `page`.
+- The feed item's own type isn't used: an RSS or Atom entry carries no type beyond what the page itself says, and the frontier doesn't record which URLs came from feeds.
 
 **Extractors.** A registry keyed by type:
 - V0 set: `article` / `post` (trafilatura), generic `page` (trafilatura fallback), `pdf` (pypdf), `video` (og/schema metadata only).
 - Unknown types fall back to `page`. Always record `type`.
+- As built (`app.ingest.extract`): `thread` and `paper` pages use the fallback for their media type (`page` for HTML, `pdf` for PDFs) until V1 adds their own extractors.
+- Metadata comes from the page's markup first (OpenGraph, `citation_*` tags, JSON-LD, `<html lang>`), then trafilatura's. A site name appended to the title (`PageRank - Wikipedia`) is dropped. The excerpt is the page's own description, else the start of its text.
+- Pages that say `noindex` (robots meta tag, a meta tag for `bribot`, or an X-Robots-Tag header) don't become documents; their links are still followed unless they say `nofollow`. Links marked `rel=nofollow`, `ugc` or `sponsored` are neither followed nor graph edges. A document that turns `noindex` after it was indexed keeps its row, because deleting it would also delete users' feedback on it; hiding such documents is left to ranking (M7).
+- Feeds and other XML bodies are not documents.
 
 **URL canonicalization** (applied before insertion into `urls`; `app.crawl.urls`, built in M3 because the frontier needs it):
 - Lowercase the scheme and host.
@@ -256,6 +274,8 @@ priority(url) = Σ_{p ∈ known parents} global_pr(p) / outdegree(p)  +  λ · d
 - Sort the remaining query params.
 - Also: decode unreserved percent-escapes, uppercase the rest, and resolve dot segments. Don't upgrade http, drop the trailing slash, or lowercase the path. Reject non-http(s) URLs and URLs with credentials.
 - After fetching, honor `<link rel="canonical">` and `og:url` when they are on the same site.
+  - `rel=canonical` wins over `og:url`. A canonical pointing at the homepage from any other page is ignored: that misconfiguration would fold a whole site into one document.
+  - The declared canonical URL is enqueued at the page's own position, like a redirect within the site.
 - "Same site" (internal links, redirects, feed items) means hosts equal up to a leading `www.`.
 
 **Dedup handler.** Implement a pipeline of `DedupStrategy` objects, each returning `(document_id | None, confidence, details)`. The first confident match wins, and every decision is written to `dedup_decisions`.
@@ -263,6 +283,13 @@ priority(url) = Σ_{p ∈ known parents} global_pr(p) / outdegree(p)  +  λ · d
   1. Canonical URL match.
   2. Exact hash of normalized text (lowercased, whitespace-collapsed, boilerplate stripped).
 - Reserved for V1: a near-duplicate strategy (SimHash/MinHash). The interface must accept it without changes.
+- As built (`app.ingest.dedup`):
+  - Canonical URL match: the page's declared canonical URL (or its own URL) already maps to a document.
+  - Exact hash: another document has the same normalized text; the oldest wins. Texts under `DEDUP_HASH_MIN_WORDS` never match, since short pages ("Page not found") would all merge.
+  - A match counts at or above `DEDUP_MIN_CONFIDENCE`. With no match, the page becomes a new document whose canonical URL is its declared canonical.
+  - A page updates its document's fields and outlinks only if it is the document's *content source*: the document's canonical URL, or a page declaring that URL while the URL itself has never been fetched. A duplicate found by hash never overwrites the original.
+  - `dedup_decisions` logs every change of a URL's document, including new documents (`new`) and URLs that take their redirect target's document (`redirect`, resolved after each pass, following chains).
+- Domain metadata overrides (reserved for V1) are already applied at this stage: rows whose `url_pattern` (a glob over the canonical URL) matches replace `type`, `title`, `author`, `published_at`, `language`, `excerpt`, `canonical_url` or `noindex`.
 
 ### 6.4 Embeddings and taxonomy
 
@@ -433,7 +460,7 @@ Complete each milestone with tests passing before starting the next.
 | M1 | **Schema + migrations** | Every §4 table as Alembic migrations; the two schemas; DB roles, with a test proving the crawl role cannot read `usr`; user-deletion test |
 | M2 | **Taxonomy + suggested sources** | IAB seed loaded and pruned; descriptions data file; topic embeddings; license check noted in README; suggested-sources file with verified feeds |
 | M3 | **Fetcher + frontier** | robots.txt, politeness, conditional GET and backoff; feed and sitemap polling; depth-limit logic with unit tests for min-path merging; OPIC priority; budget and time-limit stop; resumable after kill |
-| M4 | **Extract + classify + dedup** | Classifier and extractor registries; the V0 types; rel=canonical/og:url handling (URL canonicalization and its test table landed in M3); dedup strategy pipeline plus decision log; fixtures of real saved pages for tests |
+| M4 | **Extract + classify + dedup** | Classifier and extractor registries; the V0 types; rel=canonical/og:url handling (URL canonicalization and its test table landed in M3); dedup strategy pipeline plus decision log; fixtures of real saved pages for tests (`backend/tests/fixtures/pages`, redistributable pages with their licenses) |
 | M5 | **Embed + tag** | `EmbeddingProvider` with an OpenRouter implementation plus a fake for tests; batching; spend tracking and cap; topic tagging |
 | M6 | **Graph scoring** | Sparse graph build; global PR; domain scores; per-user PPR; profile vectors; tests against a small hand-computed graph |
 | M7 | **Ranking + API** | §6.6 scoring, filters, candidates, exploration slices, diversity cap; recommendations persisted with components; §8 endpoints; explanation generation; tests for composition ratios and filters |
@@ -498,4 +525,4 @@ The V0 design already reserves the hooks each item uses.
 2. IAB taxonomy license terms for an open-source project.
 3. ~~Which hosted embedding model~~ **Resolved 2026-09-23:** Qwen3-Embedding-8B via OpenRouter at $0.01/1M tokens, 1024 dims. Worst case at 20k pages/night × ~700 tokens is ~420M tokens ≈ $4/month, well under the cap.
 4. Whether interest tag names sent to OpenRouter are acceptable under the project's privacy promise, or should be omitted from summary prompts.
-5. Project name, bot user agent, and the bot contact page (required before the first real crawl). The worker refuses to run a cycle while `USER_AGENT` points at the `example.invalid` placeholder.
+5. Project name and the bot contact page (required before the first real crawl). **Bot name resolved 2026-09-23:** `bribot`. The worker refuses to run a cycle while `USER_AGENT` points at the `example.invalid` placeholder contact URL.

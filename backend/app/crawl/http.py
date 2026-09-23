@@ -59,6 +59,8 @@ class FetchResult:
     location: str | None = None
     """For a redirect: the target, resolved against the request URL (not canonicalized)."""
     retry_after_s: float | None = None
+    robots_tag: str | None = None
+    """X-Robots-Tag headers, one per line (each may address a user agent)."""
     detail: str | None = None
     """Why the fetch was rejected or failed, for logs and stats."""
 
@@ -175,4 +177,5 @@ async def _classify(
         b"".join(chunks),
         etag=etag,
         last_modified=last_modified,
+        robots_tag="\n".join(response.headers.get_list("x-robots-tag")) or None,
     )

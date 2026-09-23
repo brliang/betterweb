@@ -13,6 +13,8 @@ The full design and milestone list is in [docs/PLAN.md](docs/PLAN.md).
 | `backend/` | Python 3.12 · FastAPI · uv. `app/` is the API; `app/worker` is the nightly crawl CLI. |
 | `backend/app/db/` | SQLAlchemy models for the `web` (shared graph) and `usr` (user store) schemas |
 | `backend/app/crawl/` | The crawler: URL canonicalization, robots.txt, the frontier, polite fetching |
+| `backend/app/ingest/` | Extraction: document types, text and metadata, links, dedup |
+| `backend/tests/fixtures/pages/` | Real saved pages (redistributable) that the extraction tests run on |
 | `backend/migrations/` | Alembic migrations, including the DB roles that keep the schemas apart |
 | `backend/app/providers/` | Embedding and LLM providers (OpenRouter), behind interfaces |
 | `backend/data/taxonomy/` | The vendored IAB taxonomy, our adaptation of it, and topic descriptions |
@@ -43,7 +45,8 @@ make dev-web        # Vite on :5173, proxying /api -> :8000
 docker compose up   # Postgres (pgvector), migrations, API, frontend
 ```
 
-The worker CLI runs the nightly crawl cycle (so far, the fetch stage) and development tasks:
+The worker CLI runs the nightly crawl cycle (so far, the fetch and extract stages) and
+development tasks:
 
 ```sh
 cd backend
@@ -52,8 +55,14 @@ uv run python -m app.worker cycle run    # run, or resume after a kill, the craw
 docker compose run --rm worker cycle run
 ```
 
-`cycle run` refuses to crawl until `USER_AGENT` names a real contact page for the bot
-(docs/PLAN.md §14 Q5): sites need a way to reach whoever runs the crawler.
+The crawler identifies itself as `bribot`. `cycle run` refuses to crawl until `USER_AGENT` names
+a real contact page for it (docs/PLAN.md §14 Q5): sites need a way to reach whoever runs the
+crawler.
+
+To add an extraction test page: `uv run python -m scripts.capture_page URL NAME` (it checks
+robots.txt first), then fill in its license and expected values in
+`backend/tests/fixtures/pages/manifest.toml`. Only save pages whose license allows
+redistribution.
 
 **Typed client rule:** never hand-write API types in the frontend. After changing any backend
 route or model, run `make codegen` and commit the result; CI fails if the client is stale.

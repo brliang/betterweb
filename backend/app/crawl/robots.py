@@ -22,6 +22,11 @@ MAX_ROBOTS_REDIRECTS = 5
 `max_redirects`; page fetches don't follow redirects at all."""
 
 
+def product_token(user_agent: str) -> str:
+    """The name robots.txt and robots meta tags address: `bribot/0.1 (+...)` -> "bribot"."""
+    return user_agent.split("/", 1)[0].split(" ", 1)[0].strip().lower()
+
+
 class RobotsStatus(StrEnum):
     FOUND = "found"
     MISSING = "missing"
