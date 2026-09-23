@@ -112,10 +112,17 @@ class Settings(BaseSettings):
     """Texts shorter than this never match by hash: short pages ("Page not found", a video's
     empty body) would otherwise all merge into one document."""
 
-    # Personalized PageRank
+    # Scoring stage (PLAN.md §6.5)
     ppr_damping: float = Field(default=0.85, gt=0, lt=1)
+    """Chance of following a link rather than jumping back to the seeds."""
     ppr_tol: float = Field(default=1e-6, gt=0)
+    """Power iteration stops when no score vector changes by more than this (L1) in one step."""
     ppr_max_iter: int = Field(default=100, ge=1)
+    """Power iteration stops here even if not converged; the stage logs and records it."""
+    user_ppr_top_k: int = Field(default=50_000, ge=1)
+    """Highest-scoring documents stored per user in usr.user_ppr."""
+    liked_half_life_days: float = Field(default=90, gt=0)
+    """A like counts half as much in the `liked` profile vector after this many days."""
 
     # Ranking
     exploration_pct: float = Field(default=0.20, ge=0, le=1)

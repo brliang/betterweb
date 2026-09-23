@@ -109,8 +109,8 @@ Use two Postgres schemas: `web` (shared graph) and `usr` (user store).
 - **`crawl_cycles`**
   - Fields: `id`, `started_at`, `finished_at`, `status`, `page_budget`, `pages_fetched`, `stats jsonb` (per-stage counts, errors, provider spend).
 - **`provider_spend`**: `id`, `created_at`, `cycle_id` (nullable), `purpose` (`embed_documents` | `embed_topics`; M8 and M9 add search and summaries), `model`, `requests`, `tokens`, `cost_usd`, `estimated`. Ledger of model provider spend, summed for the monthly cap. No user identifiers.
-- **`global_scores`**: `document_id`, `cycle_id`, `pagerank`. PageRank seeded with *all* users' pins; drives crawl priority.
-- **`domain_scores`**: `domain_id`, `cycle_id`, `score`. Used as the domain prior.
+- **`global_scores`**: `document_id`, `cycle_id`, `pagerank`. PageRank seeded with *all* users' pins; drives crawl priority. Only documents with a positive score have a row.
+- **`domain_scores`**: `domain_id`, `cycle_id`, `score`. Used as the domain prior: the mean `pagerank` of the domain's documents (§6.5).
 - Reserved for V1: **`domain_metadata_overrides`**
   - Fields: `domain_id`, `url_pattern`, `field`, `value jsonb`, `created_at`.
   - Create the table in V0 and leave it empty. Ingestion should already apply overrides if rows exist (no-op in V0).
@@ -157,7 +157,9 @@ All of these live in one Pydantic settings module and can be overridden via envi
 | `GLOBAL_CONCURRENCY` | 50 | |
 | `MAX_PAGE_BYTES` | 5 MB | |
 | `PPR_DAMPING` | 0.85 | |
-| `PPR_TOL` / `PPR_MAX_ITER` | 1e-6 / 100 | |
+| `PPR_TOL` / `PPR_MAX_ITER` | 1e-6 / 100 | Largest L1 change per step to stop at; iteration cap (the stage records whether it converged) |
+| `USER_PPR_TOP_K` | 50,000 | Documents stored per user in `user_ppr` |
+| `LIKED_HALF_LIFE_DAYS` | 90 | Recency decay of likes in the `liked` profile vector |
 | `EXPLORATION_PCT` | 0.20 | Overridden by survey answer |
 | `EXPLORATION_SPLIT` | 50/50 semantic/graph | |
 | `RECENCY_HALF_LIFE_DAYS` | 7 | Longer for evergreen types (paper, PDF) |
@@ -207,6 +209,8 @@ A **crawl cycle** is one nightly batch run with a fixed page budget, recorded in
    - A document is a candidate when it has no embedding from the configured model or was updated since its embedding was checked; if its embedding input is unchanged it costs no request.
    - When the monthly cap is reached, or the provider fails after its retries, the stage stops and the cycle goes on; the remaining documents wait for the next cycle.
 5. **Scores**: compute global PageRank, domain scores and per-user PPR, then refresh user profile vectors (§6.5).
+   - Computed in memory and written in one transaction (with the frontier priorities it re-estimates), so a killed stage leaves the previous scores and a re-run starts over.
+   - The only cycle stage that reads `usr`; it needs nothing beyond the `discovery_score` role's grants.
 
 Use Postgres as the work queue rather than adding a queue service.
 - Planning marks entries with the cycle instead of locking them with `FOR UPDATE SKIP LOCKED`, which Postgres doesn't allow alongside the window functions that cap each domain.
@@ -333,6 +337,15 @@ priority(url) = Σ_{p ∈ known parents} global_pr(p) / outdegree(p)  +  λ · d
 - `interest`: weighted mean of the embeddings of the user's interest topics.
 - `liked`: mean of liked document embeddings, with recency decay.
 - `hidden`: mean of hidden document embeddings.
+
+**As built (M6, `app.score`):**
+- **Graph**: every document is a node. A link is an edge when its URL resolves to a document; several links between two documents make one edge, and links to the document itself none. Edges are unweighted, internal links included.
+- **Power iteration**: `x ← d·W·x + (d·(mass on documents without outlinks) + 1 − d)·p`, so a surfer on a page with no outlinks jumps back to its seeds. The global surfer and every user's are the columns of one matrix, solved together (scipy.sparse), until no column changes by more than `PPR_TOL` (L1) in a step.
+- **Seeds**: a user's pinned domains that have documents share the user's weight evenly, and each domain's share is split evenly among its documents. The global personalization is the mean of the users' (each user weighted equally, however many pins); with no pins at all it is uniform, i.e. plain PageRank. The global scores are therefore *not* the mean of the users' scores: pages without outlinks send each surfer back to its own seeds, which makes PageRank nonlinear in the seeds.
+- **Domain scores** are the mean PageRank of the domain's documents, the expected score of a new page there, so they share the scale of the in-link term in the frontier priority (§6.2).
+- **User PPR**: the top `USER_PPR_TOP_K` positive scores per user; a user whose pins have no documents yet has none.
+- **Profile vectors** are stored L2-normalized. Only embeddings from the configured model count. A document counts by the user's latest like or hide of it (hiding a liked document moves it to `hidden`); a like's weight halves every `LIKED_HALF_LIFE_DAYS`. A kind with nothing to average has no row.
+- Verified by hand-computed graphs (tests/test_pagerank.py), a dense linear solve on a random graph with dangling nodes, and the stage end to end against a local two-site crawl.
 
 ### 6.6 Ranking
 

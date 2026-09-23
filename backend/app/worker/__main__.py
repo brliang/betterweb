@@ -1,8 +1,8 @@
 """Worker CLI: ``python -m app.worker <command>``.
 
-- ``cycle run``: run (or resume) the nightly crawl cycle (PLAN.md §6.1). Stages so far: fetch
-  (M3), extract + dedup (M4), then embed + tag (M5); scores land in M6, and M10 adds
-  scheduling and alerts. Needs OPENROUTER_API_KEY.
+- ``cycle run``: run (or resume) the nightly crawl cycle (PLAN.md §6.1): fetch (M3), extract +
+  dedup (M4), embed + tag (M5), then scores (M6); M10 adds scheduling, per-stage re-runs and
+  alerts. Needs OPENROUTER_API_KEY.
 - ``frontier seed URL [--feed FEED ...]``: enqueue a homepage as a pinned seed (for development;
   the API does this when a user pins a domain).
 - ``taxonomy seed``: load the adapted taxonomy into web.topics (idempotent).
@@ -28,6 +28,7 @@ from app.enums import SpendPurpose
 from app.ingest.stage import run_extract_stage
 from app.providers.embeddings import OpenRouterEmbeddings
 from app.providers.openrouter import OpenRouterClient, ProviderError
+from app.score.stage import run_score_stage
 from app.settings import Settings, get_settings
 from app.spend import open_meter, record_spend
 from app.taxonomy import (
@@ -76,6 +77,8 @@ async def run_cycle(settings: Settings) -> None:
                 meter = await open_meter(session, settings)
                 provider = OpenRouterEmbeddings(provider_client, settings, meter)
                 await run_embed_stage(session, cycle, provider, meter, settings)
+                logger.info("crawl cycle %d: scores stage", cycle.id)
+                await run_score_stage(session, cycle, settings)
                 await finish_cycle(session, cycle)
                 logger.info("crawl cycle %d finished", cycle.id)
     finally:

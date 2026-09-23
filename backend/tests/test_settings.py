@@ -21,6 +21,7 @@ def test_defaults_match_plan() -> None:
     assert s.ppr_damping == 0.85
     assert s.ppr_tol == 1e-6
     assert s.ppr_max_iter == 100
+    assert (s.user_ppr_top_k, s.liked_half_life_days) == (50_000, 90)
     assert s.exploration_pct == 0.20
     assert s.exploration_split_semantic == 0.5
     assert s.recency_half_life_days == 7

@@ -15,6 +15,7 @@ The full design and milestone list is in [docs/PLAN.md](docs/PLAN.md).
 | `backend/app/crawl/` | The crawler: URL canonicalization, robots.txt, the frontier, polite fetching |
 | `backend/app/ingest/` | Extraction: document types, text and metadata, links, dedup |
 | `backend/app/embed/` | The embed stage: document embeddings and topic tags |
+| `backend/app/score/` | The scoring stage: PageRank over the link graph, per-user rankings, profile vectors |
 | `backend/tests/fixtures/pages/` | Real saved pages (redistributable) that the extraction tests run on |
 | `backend/migrations/` | Alembic migrations, including the DB roles that keep the schemas apart |
 | `backend/app/providers/` | Embedding and LLM providers (OpenRouter), behind interfaces |
@@ -46,7 +47,7 @@ make dev-web        # Vite on :5173, proxying /api -> :8000
 docker compose up   # Postgres (pgvector), migrations, API, frontend
 ```
 
-The worker CLI runs the nightly crawl cycle (so far, the fetch, extract and embed stages) and
+The worker CLI runs the nightly crawl cycle (fetch, extract, embed, then scores) and
 development tasks:
 
 ```sh
@@ -83,6 +84,7 @@ on the key in OpenRouter as well; the app's own cap is `PROVIDER_MONTHLY_SPEND_C
 (per calendar month, UTC). Every embeddings request is estimated before it is sent and refused
 if it would pass the cap; what each one cost is kept in `web.provider_spend`. When the cap is
 reached, the embed stage stops and the remaining documents wait for next month's budget.
+The rest of the cycle, scoring included, still runs.
 
 ## Topic taxonomy
 

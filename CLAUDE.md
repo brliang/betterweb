@@ -122,3 +122,7 @@ same checks.
   `OPENROUTER_API_KEY`); spend is metered against the monthly cap and logged in
   `web.provider_spend`. Tagging keeps topics within `TAG_MAX_GAP` of a document's best one
   above `TAG_MIN_SIMILARITY` (measured; see PLAN.md §6.4). LLM calls get metered in M9.
+- M6 (graph scoring): done. `cycle run` ends with the scoring stage (`app/score/`): one power
+  iteration solves the global and every user's personalized PageRank (numpy/scipy), then
+  global/domain scores, `user_ppr`, frontier priorities and profile vectors are replaced in one
+  transaction. It is the only cycle stage that reads `usr`; a test runs it as `discovery_score`.
