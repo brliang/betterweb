@@ -108,7 +108,7 @@ Use two Postgres schemas: `web` (shared graph) and `usr` (user store).
   - Append-only log of every URL→Document merge, so strategies can be audited and tuned.
 - **`crawl_cycles`**
   - Fields: `id`, `started_at`, `finished_at`, `status`, `page_budget`, `pages_fetched`, `stats jsonb` (per-stage counts, errors, provider spend).
-- **`provider_spend`**: `id`, `created_at`, `cycle_id` (nullable), `purpose` (`embed_documents` | `embed_topics`; M8 and M9 add search and summaries), `model`, `requests`, `tokens`, `cost_usd`, `estimated`. Ledger of model provider spend, summed for the monthly cap. No user identifiers.
+- **`provider_spend`**: `id`, `created_at`, `cycle_id` (nullable), `purpose` (`embed_documents` | `embed_topics` | `search`; M9 adds summaries), `model`, `requests`, `tokens`, `cost_usd`, `estimated`. Ledger of model provider spend, summed for the monthly cap. No user identifiers.
 - **`global_scores`**: `document_id`, `cycle_id`, `pagerank`. PageRank seeded with *all* users' pins; drives crawl priority. Only documents with a positive score have a row.
 - **`domain_scores`**: `domain_id`, `cycle_id`, `score`. Used as the domain prior: the mean `pagerank` of the domain's documents (§6.5).
 - Reserved for V1: **`domain_metadata_overrides`**
@@ -118,9 +118,11 @@ Use two Postgres schemas: `web` (shared graph) and `usr` (user store).
 ### 4.2 `usr` — user store
 
 - **`users`**: `id`, `email`, `timezone`, `created_at`.
+- **`login_tokens`**: `token_hash`, `user_id`, `created_at`, `expires_at`, `used_at`. One-time login links (§8 auth); only SHA-256 hashes are stored.
+- **`sessions`**: `token_hash`, `user_id`, `created_at`, `expires_at`. Session cookies, hashed likewise.
 - **`survey_responses`**: `id`, `user_id`, `survey_version`, `answers jsonb`, `created_at`. Keep history; don't overwrite.
 - **`user_settings`**
-  - Fields: `user_id`, `weights jsonb` (ranking component weights), `exploration_pct`, `exploration_split jsonb` (semantic vs. graph), `content_types text[]`, `summaries_opt_in bool` (default **false**), `updated_at`.
+  - Fields: `user_id`, `preset` (§7 step 5; null is reserved for V1 custom weights), `weights jsonb` (ranking component weights), `exploration_pct`, `exploration_split jsonb` (semantic vs. graph), `content_types text[]`, `summaries_opt_in bool` (default **false**), `updated_at`.
 - **`user_interests`**: `user_id`, `topic_id`, `weight`, `source` (`survey` | `learned`).
 - **`pins`**: `user_id`, `domain_id`, `source` (`survey` | `suggested`; reserved: `manual`), `created_at`.
 - **`feedback`**
@@ -163,7 +165,17 @@ All of these live in one Pydantic settings module and can be overridden via envi
 | `EXPLORATION_PCT` | 0.20 | Overridden by survey answer |
 | `EXPLORATION_SPLIT` | 50/50 semantic/graph | |
 | `RECENCY_HALF_LIFE_DAYS` | 7 | Longer for evergreen types (paper, PDF) |
-| `MAX_PER_DOMAIN_PER_PAGE` | 2 | Diversity cap per 20 results |
+| `MAX_PER_DOMAIN_PER_PAGE` | 2 | Diversity cap per feed page, unless no other domain has candidates left |
+| `RANKING_PRESETS` / `SEARCH_QUERY_WEIGHT` | see settings.py / 5 | Component weights per survey preset; w_q |
+| `INTEREST_LEVEL_WEIGHTS` / `INTEREST_TOPIC_BLEND` | 1 and 2 / 0.5 | Weight of "interested" and "very interested"; topic-overlap share of interest similarity |
+| `EVERGREEN_HALF_LIFE_DAYS` / `EVERGREEN_TYPES` | 90 / paper, pdf | Recency half-life of types that stay relevant |
+| `HIDE_PENALTY_THRESHOLD` / `PROFILE_MAX_DOCUMENTS` | 0.75 / 200 | Similarity to a hidden document where the penalty starts; recent likes and hides compared |
+| `IMPRESSION_MAX_UNCLICKED` | 3 | Shown more often than this without a click: filtered from the feed |
+| `CANDIDATES_PER_SOURCE` / `FEED_PAGE_SIZE` | 500 / 20 | Top-N per candidate source; items per feed or search page |
+| `EXPLORATION_CHOICES` / `EXPLORE_BAND_SKIP` / `EXPLORE_BAND_SIZE` / `EXPLORE_GRAPH_MAX_HOPS` | 10/20/35% / 500 / 1,000 / 2 | Survey choices; the semantic band (nearest skipped, then taken); domain hops for graph exploration |
+| `DEFAULT_CONTENT_TYPES` | all but `page` | Before the survey |
+| `REASONS_MAX` / `REASON_MIN_CONTRIBUTION` / `REASON_EXAMPLES_MAX` | 3 / 0.1 / 2 | "Why this?" reasons (§6.7) |
+| `LOGIN_TOKEN_TTL_MINUTES` / `SESSION_TTL_DAYS` / `SESSION_COOKIE_SECURE` / `ADMIN_EMAILS` | 30 / 30 / true / none | Auth (§8) |
 | `PROVIDER_MONTHLY_SPEND_CAP_USD` | 40 | Hard stop on embedding + LLM spend, per calendar month (UTC) |
 | `USER_AGENT` | `bribot/0.1 (+https://<project-url>/bot)` | Contact page required |
 | `ROBOTS_TTL_H` | 24 | robots.txt refresh interval |
@@ -377,6 +389,23 @@ search(d, u, q) = score(d, u) + w_q · cos(embed(q), doc_emb)     # w_q ≫ othe
 - **Diversity**: at most `MAX_PER_DOMAIN_PER_PAGE` documents from one domain per 20 results.
 - **Persist** every served item to `recommendations`, with its `components` and `slice`.
 
+**As built (M7, `app.rank`):**
+- **Pages**: each page is ranked when requested. The cursor names the first recommendation of a feed (or search) session, and later pages skip what the session has served, so the exploration share, its interleaving and the domain cap all hold per page (`FEED_PAGE_SIZE`, 20). Without a cursor a new session starts.
+- **Normalization**: interest, PPR, feedback and query similarity are min-max normalized within the candidate set (a set with no spread gives 1 to positive values, 0 to zeros). Recency and the hide penalty keep their absolute [0, 1] scales, so a faint resemblance to a hidden document stays a faint penalty.
+- **Components**:
+  - **Interest** = (1 − `INTEREST_TOPIC_BLEND`) × normalized cosine to the `interest` vector + the blend × normalized topic overlap. The overlap is the share of a document's tag scores under the user's interests (an interest covers its descendants), each weighted by its interest's weight relative to the strongest.
+  - **PPR** is `log(1 + ppr · N)`, i.e. in multiples of the uniform score 1/N over the N documents.
+  - **Recency** is `0.5^(age / half-life)`, where age runs from `published_at`, else from when the document was first crawled.
+  - **Hide penalty** is 0 below `HIDE_PENALTY_THRESHOLD` of similarity to any of the `PROFILE_MAX_DOCUMENTS` most recently hidden documents, then rises linearly to 1.
+- **Vector math runs in Postgres**: only scalars leave the database. Nearest-neighbour queries use pgvector's iterative HNSW scans, so filters don't starve their LIMIT.
+- **Hard filters**: the feed drops liked, hidden, clicked and over-shown documents, blocked domains and unwanted types. Search drops only hidden documents, blocked domains and unwanted types, because finding something again is the point of search.
+- **Candidates and slices**:
+  - **main**: the top `CANDIDATES_PER_SOURCE` of each of user PPR, nearest to `interest`, nearest to `liked`, and newest on pinned domains.
+  - **adjacent_semantic**: interest-similarity ranks past `EXPLORE_BAND_SKIP` (the next `EXPLORE_BAND_SIZE`), plus documents tagged with an interest's parent or sibling topics (siblings with their descendants) and nothing the interests cover.
+  - **adjacent_graph**: tagged documents with nothing the interests cover, on domains 1 to `EXPLORE_GRAPH_MAX_HOPS` cross-domain links from a pin, highest user PPR first.
+  - A document can sit in several pools, but a page shows it once, under the slice that took it.
+- **Composition**: exploration gets round(ε·n) slots (rounding half up), split by `exploration_split`. The two exploration slices alternate, and their slots are spread evenly through the page. A slice with nothing left lends its slot to the other exploration slice, then to main. The per-domain cap holds unless no slice has a candidate from another domain, so a young corpus still fills its pages.
+
 ### 6.7 Explanations ("why this?")
 
 Render the top 2–3 contributing components as plain-language reasons, derived from stored `components`:
@@ -385,6 +414,8 @@ Render the top 2–3 contributing components as plain-language reasons, derived 
 - "Similar to *<title>* you liked": from the nearest liked document.
 - "Exploring: adjacent to *Design*": for exploration slices, stating which kind.
 - Show the raw component numbers in an expandable detail view.
+
+**As built (M7, `app.rank.explain`):** each served item stores a `Breakdown` in `recommendations.components`: every component's raw inputs, normalized value, weight and contribution (which sum to the score), plus the evidence the reasons draw on: its domain if pinned, the pinned and other domains linking to it (ranked by the user PPR of their linking documents), the interests its tags fall under, the nearest recently liked document, its age, and for exploration items the adjacent topic or the domain path from a pin. Reasons are derived from the stored breakdown, so the feed and `/why` always agree: the exploration reason first, then components by contribution (at least `REASON_MIN_CONTRIBUTION`), up to `REASONS_MAX`. The hide penalty never gives a reason.
 
 ### 6.8 Opt-in LLM summaries
 
@@ -437,6 +468,15 @@ All routes are user-scoped and use Pydantic request/response models, so the Open
 - `GET /admin/cycles`, `GET /admin/metrics` (§9)
 
 **Auth (V0):** email magic-link or a single seeded account with a session cookie. Keep it minimal, but keep `user_id` scoping real so multi-user works in V1.
+
+**As built (M7, `app.api`):**
+- **Auth**: magic links without email. `python -m app.worker users login-link EMAIL` creates the user if needed and prints a one-time link to the frontend's `/login` page (valid `LOGIN_TOKEN_TTL_MINUTES`), which trades it for an HttpOnly, SameSite=Lax session cookie (`POST /auth/session`); `POST /auth/logout`, `GET /me`. Only token hashes are stored. Admin routes need an email in `ADMIN_EMAILS`.
+- **Added routes**: `PATCH /feedback/{id}` (the like-reason prompt comes after the like), and the auth routes above. `/taxonomy` and `/suggested-sources` need no session; every other route is scoped to the signed-in user.
+- **`POST /documents/{id}/summary`** comes with M9, which owns summaries.
+- **Pins** accept a domain or any URL on the site; they enqueue its homepage (and the URL, and a suggested source's feed) as seeds. A pin covers its domain's `www.` twin (`app.pins`), for scoring too, since "example.com" usually redirects to "www.example.com".
+- **The survey** is stored as submitted and replaces the interests, pins and settings; the settings page (`PUT /settings`) edits interests, content types, exploration share, preset and the summaries opt-in. Both, and likes and hides, rebuild the user's profile vectors right away, not only at the next cycle.
+- **Events**: `POST /events` takes impressions and clicks; `/feedback` logs likes and hides, `/why` logs `why_open`. References are checked: a recommendation must be the user's and have served that document.
+- **Search** embeds the query through the metered provider (`provider_spend.purpose = search`), caches it in memory for paging, and returns 503 without a key or past the cap. Only the query text is sent.
 
 ---
 
@@ -549,3 +589,4 @@ The V0 design already reserves the hooks each item uses.
 3. ~~Which hosted embedding model~~ **Resolved 2026-09-23:** Qwen3-Embedding-8B via OpenRouter at $0.01/1M tokens, 1024 dims. Worst case at 20k pages/night × ~700 tokens is ~420M tokens ≈ $4/month, well under the cap.
 4. Whether interest tag names sent to OpenRouter are acceptable under the project's privacy promise, or should be omitted from summary prompts.
 5. Project name and the bot contact page (required before the first real crawl). **Bot name resolved 2026-09-23:** `bribot`. The worker refuses to run a cycle while `USER_AGENT` points at the `example.invalid` placeholder contact URL.
+6. **Before deploying (M10):** the crawler fetches any http(s) URL it finds, including private and loopback addresses (`10.x`, `127.0.0.1`, `169.254.169.254`), so a link on a crawled page could make it request services on the VM. It needs to refuse non-public addresses (after DNS resolution, and on every redirect) behind a setting that local end-to-end checks can turn off.

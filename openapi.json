@@ -1,6 +1,672 @@
 {
   "components": {
     "schemas": {
+      "Component": {
+        "enum": [
+          "interest",
+          "ppr",
+          "feedback",
+          "recency",
+          "hide",
+          "query"
+        ],
+        "title": "Component",
+        "type": "string"
+      },
+      "ComponentScore": {
+        "properties": {
+          "contribution": {
+            "title": "Contribution",
+            "type": "number"
+          },
+          "inputs": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Inputs",
+            "type": "object"
+          },
+          "name": {
+            "$ref": "#/components/schemas/Component"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "inputs",
+          "value",
+          "weight",
+          "contribution"
+        ],
+        "title": "ComponentScore",
+        "type": "object"
+      },
+      "CycleStatus": {
+        "enum": [
+          "running",
+          "succeeded",
+          "failed"
+        ],
+        "title": "CycleStatus",
+        "type": "string"
+      },
+      "CycleSummary": {
+        "properties": {
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "page_budget": {
+            "title": "Page Budget",
+            "type": "integer"
+          },
+          "pages_fetched": {
+            "title": "Pages Fetched",
+            "type": "integer"
+          },
+          "spend_usd": {
+            "title": "Spend Usd",
+            "type": "number"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "stats": {
+            "additionalProperties": true,
+            "title": "Stats",
+            "type": "object"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CycleStatus"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "started_at",
+          "finished_at",
+          "duration_s",
+          "page_budget",
+          "pages_fetched",
+          "spend_usd",
+          "stats"
+        ],
+        "title": "CycleSummary",
+        "type": "object"
+      },
+      "DailyMetrics": {
+        "properties": {
+          "clicks": {
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "discoveries": {
+            "title": "Discoveries",
+            "type": "integer"
+          },
+          "hides": {
+            "title": "Hides",
+            "type": "integer"
+          },
+          "impressions": {
+            "title": "Impressions",
+            "type": "integer"
+          },
+          "likes": {
+            "title": "Likes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "impressions",
+          "clicks",
+          "likes",
+          "hides",
+          "discoveries"
+        ],
+        "title": "DailyMetrics",
+        "type": "object"
+      },
+      "DocumentCard": {
+        "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          },
+          "excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excerpt"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "type": {
+            "$ref": "#/components/schemas/DocumentType"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "domain",
+          "type",
+          "title",
+          "author",
+          "published_at",
+          "excerpt"
+        ],
+        "title": "DocumentCard",
+        "type": "object"
+      },
+      "DocumentType": {
+        "enum": [
+          "article",
+          "post",
+          "thread",
+          "paper",
+          "pdf",
+          "video",
+          "page"
+        ],
+        "title": "DocumentType",
+        "type": "string"
+      },
+      "EventIn": {
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "impression",
+              "click"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "recommendation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommendation Id"
+          },
+          "surface": {
+            "$ref": "#/components/schemas/Surface"
+          }
+        },
+        "required": [
+          "kind",
+          "document_id",
+          "surface"
+        ],
+        "title": "EventIn",
+        "type": "object"
+      },
+      "EventsIn": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventIn"
+            },
+            "minItems": 1,
+            "title": "Events",
+            "type": "array"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "title": "EventsIn",
+        "type": "object"
+      },
+      "EventsRecorded": {
+        "properties": {
+          "recorded": {
+            "title": "Recorded",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "recorded"
+        ],
+        "title": "EventsRecorded",
+        "type": "object"
+      },
+      "Evidence": {
+        "properties": {
+          "age_days": {
+            "title": "Age Days",
+            "type": "number"
+          },
+          "exploration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Exploration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "interest_topics": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TopicRef"
+            },
+            "title": "Interest Topics",
+            "type": "array"
+          },
+          "nearest_liked": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LikedRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "other_linker_count": {
+            "default": 0,
+            "title": "Other Linker Count",
+            "type": "integer"
+          },
+          "other_linkers": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Other Linkers",
+            "type": "array"
+          },
+          "pinned_domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned Domain"
+          },
+          "published": {
+            "title": "Published",
+            "type": "boolean"
+          },
+          "trusted_linker_count": {
+            "default": 0,
+            "title": "Trusted Linker Count",
+            "type": "integer"
+          },
+          "trusted_linkers": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Trusted Linkers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "age_days",
+          "published"
+        ],
+        "title": "Evidence",
+        "type": "object"
+      },
+      "Exploration": {
+        "description": "Why an exploration slice picked the item.",
+        "properties": {
+          "adjacent_topic": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TopicRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "interest_topic": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TopicRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outside_topic": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TopicRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "path": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Path",
+            "type": "array"
+          },
+          "slice": {
+            "$ref": "#/components/schemas/Slice"
+          }
+        },
+        "required": [
+          "slice"
+        ],
+        "title": "Exploration",
+        "type": "object"
+      },
+      "FeedItem": {
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/DocumentCard"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/Reason"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "recommendation_id": {
+            "title": "Recommendation Id",
+            "type": "integer"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "slice": {
+            "$ref": "#/components/schemas/Slice"
+          }
+        },
+        "required": [
+          "recommendation_id",
+          "position",
+          "slice",
+          "score",
+          "document",
+          "reasons"
+        ],
+        "title": "FeedItem",
+        "type": "object"
+      },
+      "FeedPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FeedItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "FeedPage",
+        "type": "object"
+      },
+      "FeedbackIn": {
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FeedbackKind"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "reason_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Text"
+          },
+          "recommendation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommendation Id"
+          }
+        },
+        "required": [
+          "document_id",
+          "kind"
+        ],
+        "title": "FeedbackIn",
+        "type": "object"
+      },
+      "FeedbackKind": {
+        "enum": [
+          "like",
+          "hide",
+          "block_domain"
+        ],
+        "title": "FeedbackKind",
+        "type": "string"
+      },
+      "FeedbackOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FeedbackKind"
+          },
+          "reason_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Text"
+          }
+        },
+        "required": [
+          "id",
+          "document_id",
+          "kind",
+          "reason_text",
+          "created_at"
+        ],
+        "title": "FeedbackOut",
+        "type": "object"
+      },
+      "FeedbackReasonIn": {
+        "properties": {
+          "reason_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Text"
+          }
+        },
+        "required": [
+          "reason_text"
+        ],
+        "title": "FeedbackReasonIn",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
       "Health": {
         "properties": {
           "status": {
@@ -14,6 +680,807 @@
         ],
         "title": "Health",
         "type": "object"
+      },
+      "InterestChoice": {
+        "properties": {
+          "level": {
+            "$ref": "#/components/schemas/InterestLevel"
+          },
+          "topic_id": {
+            "title": "Topic Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "topic_id",
+          "level"
+        ],
+        "title": "InterestChoice",
+        "type": "object"
+      },
+      "InterestLevel": {
+        "description": "How strongly a user picked an interest in the survey (PLAN.md \u00a77 step 1); stored as the\nweight INTEREST_LEVEL_WEIGHTS gives it.",
+        "enum": [
+          "interested",
+          "very_interested"
+        ],
+        "title": "InterestLevel",
+        "type": "string"
+      },
+      "LikedRef": {
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "similarity": {
+            "title": "Similarity",
+            "type": "number"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "document_id",
+          "title",
+          "similarity"
+        ],
+        "title": "LikedRef",
+        "type": "object"
+      },
+      "LoginRequest": {
+        "properties": {
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "LoginRequest",
+        "type": "object"
+      },
+      "Me": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "is_admin": {
+            "title": "Is Admin",
+            "type": "boolean"
+          },
+          "survey_completed": {
+            "title": "Survey Completed",
+            "type": "boolean"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "timezone",
+          "survey_completed",
+          "is_admin"
+        ],
+        "title": "Me",
+        "type": "object"
+      },
+      "Metrics": {
+        "properties": {
+          "corpus": {
+            "items": {
+              "$ref": "#/components/schemas/TypeCount"
+            },
+            "title": "Corpus",
+            "type": "array"
+          },
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/DailyMetrics"
+            },
+            "title": "Daily",
+            "type": "array"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "embedded": {
+            "title": "Embedded",
+            "type": "integer"
+          },
+          "frontier_due": {
+            "title": "Frontier Due",
+            "type": "integer"
+          },
+          "frontier_new": {
+            "title": "Frontier New",
+            "type": "integer"
+          },
+          "frontier_recrawl": {
+            "title": "Frontier Recrawl",
+            "type": "integer"
+          },
+          "hide_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hide Rate"
+          },
+          "month_spend_usd": {
+            "title": "Month Spend Usd",
+            "type": "number"
+          },
+          "slices": {
+            "items": {
+              "$ref": "#/components/schemas/SliceMetrics"
+            },
+            "title": "Slices",
+            "type": "array"
+          },
+          "spend_cap_usd": {
+            "title": "Spend Cap Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "days",
+          "documents",
+          "embedded",
+          "corpus",
+          "frontier_new",
+          "frontier_recrawl",
+          "frontier_due",
+          "month_spend_usd",
+          "spend_cap_usd",
+          "daily",
+          "hide_rate",
+          "slices"
+        ],
+        "title": "Metrics",
+        "type": "object"
+      },
+      "PinIn": {
+        "properties": {
+          "site": {
+            "title": "Site",
+            "type": "string"
+          }
+        },
+        "required": [
+          "site"
+        ],
+        "title": "PinIn",
+        "type": "object"
+      },
+      "PinOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "domain_id": {
+            "title": "Domain Id",
+            "type": "integer"
+          },
+          "host": {
+            "title": "Host",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "source": {
+            "$ref": "#/components/schemas/PinSource"
+          }
+        },
+        "required": [
+          "domain_id",
+          "host",
+          "source",
+          "name",
+          "created_at"
+        ],
+        "title": "PinOut",
+        "type": "object"
+      },
+      "PinSource": {
+        "enum": [
+          "survey",
+          "suggested"
+        ],
+        "title": "PinSource",
+        "type": "string"
+      },
+      "RankingPreset": {
+        "description": "Survey step 5 (PLAN.md \u00a77); RANKING_PRESETS maps each to ranking weights.",
+        "enum": [
+          "balanced",
+          "trust_my_sources",
+          "match_my_interests",
+          "fresh"
+        ],
+        "title": "RankingPreset",
+        "type": "string"
+      },
+      "RankingWeights": {
+        "additionalProperties": false,
+        "description": "Weights of the ranking components (PLAN.md \u00a76.6); all non-negative, the hide penalty\nis subtracted.",
+        "properties": {
+          "feedback": {
+            "minimum": 0.0,
+            "title": "Feedback",
+            "type": "number"
+          },
+          "hide": {
+            "minimum": 0.0,
+            "title": "Hide",
+            "type": "number"
+          },
+          "interest": {
+            "minimum": 0.0,
+            "title": "Interest",
+            "type": "number"
+          },
+          "ppr": {
+            "minimum": 0.0,
+            "title": "Ppr",
+            "type": "number"
+          },
+          "recency": {
+            "minimum": 0.0,
+            "title": "Recency",
+            "type": "number"
+          }
+        },
+        "required": [
+          "interest",
+          "ppr",
+          "feedback",
+          "recency",
+          "hide"
+        ],
+        "title": "RankingWeights",
+        "type": "object"
+      },
+      "Reason": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ReasonKind"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text"
+        ],
+        "title": "Reason",
+        "type": "object"
+      },
+      "ReasonKind": {
+        "enum": [
+          "exploration",
+          "sources",
+          "interest",
+          "liked",
+          "recency",
+          "search"
+        ],
+        "title": "ReasonKind",
+        "type": "string"
+      },
+      "Slice": {
+        "enum": [
+          "main",
+          "adjacent_semantic",
+          "adjacent_graph"
+        ],
+        "title": "Slice",
+        "type": "string"
+      },
+      "SliceMetrics": {
+        "properties": {
+          "click_through": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Click Through"
+          },
+          "clicks": {
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "impressions": {
+            "title": "Impressions",
+            "type": "integer"
+          },
+          "slice": {
+            "$ref": "#/components/schemas/Slice"
+          }
+        },
+        "required": [
+          "slice",
+          "impressions",
+          "clicks",
+          "click_through"
+        ],
+        "title": "SliceMetrics",
+        "type": "object"
+      },
+      "SuggestedSourceOut": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "feed": {
+            "title": "Feed",
+            "type": "string"
+          },
+          "host": {
+            "title": "Host",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/TopicRef"
+            },
+            "title": "Topics",
+            "type": "array"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "url",
+          "host",
+          "feed",
+          "description",
+          "topics"
+        ],
+        "title": "SuggestedSourceOut",
+        "type": "object"
+      },
+      "Surface": {
+        "enum": [
+          "feed",
+          "search"
+        ],
+        "title": "Surface",
+        "type": "string"
+      },
+      "SurveyAnswers": {
+        "additionalProperties": false,
+        "description": "Version 1 of the survey, one field per step.",
+        "properties": {
+          "content_types": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentType"
+            },
+            "minItems": 1,
+            "title": "Content Types",
+            "type": "array"
+          },
+          "exploration_pct": {
+            "title": "Exploration Pct",
+            "type": "number"
+          },
+          "interests": {
+            "items": {
+              "$ref": "#/components/schemas/InterestChoice"
+            },
+            "minItems": 1,
+            "title": "Interests",
+            "type": "array"
+          },
+          "preset": {
+            "$ref": "#/components/schemas/RankingPreset"
+          },
+          "sites": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Sites",
+            "type": "array"
+          }
+        },
+        "required": [
+          "interests",
+          "content_types",
+          "exploration_pct",
+          "preset"
+        ],
+        "title": "SurveyAnswers",
+        "type": "object"
+      },
+      "SurveyOut": {
+        "properties": {
+          "answers": {
+            "$ref": "#/components/schemas/SurveyAnswers"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "answers",
+          "created_at"
+        ],
+        "title": "SurveyOut",
+        "type": "object"
+      },
+      "SurveySubmission": {
+        "properties": {
+          "answers": {
+            "$ref": "#/components/schemas/SurveyAnswers"
+          },
+          "version": {
+            "const": 1,
+            "default": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "answers"
+        ],
+        "title": "SurveySubmission",
+        "type": "object"
+      },
+      "TopicOut": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "external_id": {
+            "title": "External Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "external_id",
+          "name",
+          "parent_id",
+          "tier",
+          "description"
+        ],
+        "title": "TopicOut",
+        "type": "object"
+      },
+      "TopicRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "TopicRef",
+        "type": "object"
+      },
+      "TypeCount": {
+        "properties": {
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "type": {
+            "$ref": "#/components/schemas/DocumentType"
+          }
+        },
+        "required": [
+          "type",
+          "documents"
+        ],
+        "title": "TypeCount",
+        "type": "object"
+      },
+      "UserSettingsIn": {
+        "properties": {
+          "content_types": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentType"
+            },
+            "minItems": 1,
+            "title": "Content Types",
+            "type": "array"
+          },
+          "exploration_pct": {
+            "title": "Exploration Pct",
+            "type": "number"
+          },
+          "interests": {
+            "items": {
+              "$ref": "#/components/schemas/InterestChoice"
+            },
+            "title": "Interests",
+            "type": "array"
+          },
+          "preset": {
+            "$ref": "#/components/schemas/RankingPreset"
+          },
+          "summaries_opt_in": {
+            "title": "Summaries Opt In",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "preset",
+          "exploration_pct",
+          "content_types",
+          "summaries_opt_in",
+          "interests"
+        ],
+        "title": "UserSettingsIn",
+        "type": "object"
+      },
+      "UserSettingsOut": {
+        "properties": {
+          "content_types": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentType"
+            },
+            "title": "Content Types",
+            "type": "array"
+          },
+          "exploration_choices": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Exploration Choices",
+            "type": "array"
+          },
+          "exploration_pct": {
+            "title": "Exploration Pct",
+            "type": "number"
+          },
+          "exploration_split_semantic": {
+            "title": "Exploration Split Semantic",
+            "type": "number"
+          },
+          "interests": {
+            "items": {
+              "$ref": "#/components/schemas/InterestChoice"
+            },
+            "title": "Interests",
+            "type": "array"
+          },
+          "preset": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RankingPreset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summaries_opt_in": {
+            "title": "Summaries Opt In",
+            "type": "boolean"
+          },
+          "weights": {
+            "$ref": "#/components/schemas/RankingWeights"
+          }
+        },
+        "required": [
+          "preset",
+          "weights",
+          "exploration_pct",
+          "exploration_choices",
+          "exploration_split_semantic",
+          "content_types",
+          "summaries_opt_in",
+          "interests"
+        ],
+        "title": "UserSettingsOut",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "Why": {
+        "properties": {
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/ComponentScore"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "document": {
+            "$ref": "#/components/schemas/DocumentCard"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/Evidence"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/Reason"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "recommendation_id": {
+            "title": "Recommendation Id",
+            "type": "integer"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "slice": {
+            "$ref": "#/components/schemas/Slice"
+          },
+          "surface": {
+            "$ref": "#/components/schemas/Surface"
+          }
+        },
+        "required": [
+          "recommendation_id",
+          "surface",
+          "query",
+          "slice",
+          "score",
+          "created_at",
+          "document",
+          "reasons",
+          "components",
+          "evidence"
+        ],
+        "title": "Why",
+        "type": "object"
       }
     }
   },
@@ -23,6 +1490,296 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/admin/cycles": {
+      "get": {
+        "description": "The most recent crawl cycles (ADMIN_CYCLES_SHOWN), newest first.",
+        "operationId": "cycles",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CycleSummary"
+                  },
+                  "title": "Response Cycles",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Cycles",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/metrics": {
+      "get": {
+        "operationId": "metrics",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Metrics"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Metrics",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "sign_out",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Sign Out",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/session": {
+      "post": {
+        "description": "Trade a one-time login token for a session cookie.",
+        "operationId": "sign_in",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sign In",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/events": {
+      "post": {
+        "description": "Record a batch of impressions and clicks.",
+        "operationId": "record_events",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsRecorded"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Events",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/feed": {
+      "get": {
+        "description": "The next page of the user's feed. Without a cursor, a new feed session starts.",
+        "operationId": "feed",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Feed",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/feedback": {
+      "post": {
+        "description": "Like, hide, or block the document's domain. Hidden documents and blocked domains leave\nthe feed at once; likes and hides reshape the profile vectors right away too.",
+        "operationId": "give_feedback",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Give Feedback",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/feedback/{feedback_id}": {
+      "patch": {
+        "description": "Add (or clear) the optional reason after the fact: the \"What did you like about it?\"\nprompt comes after the like.",
+        "operationId": "set_feedback_reason",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feedback_id",
+            "required": true,
+            "schema": {
+              "title": "Feedback Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackReasonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Feedback Reason",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "health",
@@ -41,6 +1798,406 @@
         "summary": "Health",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/pins": {
+      "get": {
+        "operationId": "list_pins",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PinOut"
+                  },
+                  "title": "Response List Pins",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Pins",
+        "tags": [
+          "pins"
+        ]
+      },
+      "post": {
+        "description": "Pin a site (idempotent); its homepage and feeds join the crawl frontier.",
+        "operationId": "add_pin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PinIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PinOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Pin",
+        "tags": [
+          "pins"
+        ]
+      }
+    },
+    "/pins/{domain_id}": {
+      "delete": {
+        "description": "Unpin a site. What was crawled stays in the shared graph; the user's scores follow at\nthe next cycle.",
+        "operationId": "remove_pin",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "domain_id",
+            "required": true,
+            "schema": {
+              "title": "Domain Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Pin",
+        "tags": [
+          "pins"
+        ]
+      }
+    },
+    "/recommendations/{recommendation_id}/why": {
+      "get": {
+        "description": "The full score breakdown of a served item (PLAN.md \u00a76.7). Logs a `why_open` event.",
+        "operationId": "why",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recommendation_id",
+            "required": true,
+            "schema": {
+              "title": "Recommendation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Why"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Why",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/search": {
+      "get": {
+        "description": "Documents matching the query, ranked with the user's own signals on top.",
+        "operationId": "search",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/settings": {
+      "get": {
+        "description": "The user's settings, or the defaults before the survey.",
+        "operationId": "user_settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "User Settings",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "operationId": "update_user_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserSettingsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update User Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/suggested-sources": {
+      "get": {
+        "operationId": "list_suggested_sources",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SuggestedSourceOut"
+                  },
+                  "title": "Response List Suggested Sources",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Suggested Sources",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/survey": {
+      "post": {
+        "description": "Store the answers and apply them: they replace the user's interests, pins and\nsettings (summaries stay as they were: off unless opted in on the settings page).",
+        "operationId": "submit_survey",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SurveySubmission"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SurveyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Survey",
+        "tags": [
+          "survey"
+        ]
+      }
+    },
+    "/survey/latest": {
+      "get": {
+        "operationId": "latest_survey",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SurveyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Latest Survey",
+        "tags": [
+          "survey"
+        ]
+      }
+    },
+    "/taxonomy": {
+      "get": {
+        "description": "Every topic, tier by tier; the survey offers tier 1, expandable to tier 2.",
+        "operationId": "taxonomy",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TopicOut"
+                  },
+                  "title": "Response Taxonomy",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Taxonomy",
+        "tags": [
+          "catalog"
         ]
       }
     }

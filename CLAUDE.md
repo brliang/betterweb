@@ -126,3 +126,8 @@ same checks.
   iteration solves the global and every user's personalized PageRank (numpy/scipy), then
   global/domain scores, `user_ppr`, frontier priorities and profile vectors are replaced in one
   transaction. It is the only cycle stage that reads `usr`; a test runs it as `discovery_score`.
+- M7 (ranking + API): done. `app/rank/` ranks each feed or search page when requested and stores
+  every served item's breakdown in `usr.recommendations` (reasons are derived from it). Auth is
+  a one-time login link from `app.worker users login-link` plus a session cookie. The API tests
+  run as `discovery_api`. The summaries route is M9's. Pins cover their domain's `www.` twin
+  (`app.pins`). Before deploying, the crawler must refuse private addresses (PLAN.md §14 Q6).

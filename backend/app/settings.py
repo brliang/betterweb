@@ -6,9 +6,25 @@ Each field can be overridden by an environment variable of the same name, case-i
 
 from datetime import time
 from functools import lru_cache
+from typing import Self
 
-from pydantic import Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.enums import DocumentType, InterestLevel, RankingPreset
+
+
+class RankingWeights(BaseModel):
+    """Weights of the ranking components (PLAN.md §6.6); all non-negative, the hide penalty
+    is subtracted."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    interest: float = Field(ge=0)
+    ppr: float = Field(ge=0)
+    feedback: float = Field(ge=0)
+    recency: float = Field(ge=0)
+    hide: float = Field(ge=0)
 
 
 class Settings(BaseSettings):
@@ -124,14 +140,97 @@ class Settings(BaseSettings):
     liked_half_life_days: float = Field(default=90, gt=0)
     """A like counts half as much in the `liked` profile vector after this many days."""
 
-    # Ranking
+    # Ranking (PLAN.md §6.6)
+    ranking_presets: dict[RankingPreset, RankingWeights] = {
+        RankingPreset.BALANCED: RankingWeights(
+            interest=1.0, ppr=1.0, feedback=0.5, recency=0.5, hide=1.0
+        ),
+        RankingPreset.TRUST_MY_SOURCES: RankingWeights(
+            interest=0.5, ppr=2.0, feedback=0.5, recency=0.5, hide=1.0
+        ),
+        RankingPreset.MATCH_MY_INTERESTS: RankingWeights(
+            interest=2.0, ppr=0.5, feedback=0.5, recency=0.5, hide=1.0
+        ),
+        RankingPreset.FRESH: RankingWeights(
+            interest=0.5, ppr=0.5, feedback=0.5, recency=2.0, hide=1.0
+        ),
+    }
+    """Component weights of each survey preset; a user's ranking follows their preset's
+    current weights."""
+    default_preset: RankingPreset = RankingPreset.BALANCED
+    search_query_weight: float = Field(default=5.0, ge=0)
+    """w_q: weight of query similarity in search, far above the other weights."""
+    interest_level_weights: dict[InterestLevel, float] = {
+        InterestLevel.INTERESTED: 1.0,
+        InterestLevel.VERY_INTERESTED: 2.0,
+    }
+    """user_interests.weight for each survey answer."""
+    interest_topic_blend: float = Field(default=0.5, ge=0, le=1)
+    """Share of topic-tag overlap in interest similarity; the rest is embedding similarity."""
+    recency_half_life_days: float = Field(default=7, gt=0)
+    evergreen_half_life_days: float = Field(default=90, gt=0)
+    """Recency half-life of EVERGREEN_TYPES, which stay relevant longer."""
+    evergreen_types: list[DocumentType] = [DocumentType.PAPER, DocumentType.PDF]
+    hide_penalty_threshold: float = Field(default=0.75, ge=0, lt=1)
+    """Cosine similarity to a hidden document above which a candidate is penalized; the penalty
+    grows linearly from 0 here to 1 at identical."""
+    profile_max_documents: int = Field(default=200, ge=1)
+    """Most recent liked (and hidden) documents compared against candidates, for the hide
+    penalty and "similar to ... you liked"."""
+    impression_max_unclicked: int = Field(default=3, ge=0)
+    """A document shown more often than this (distinct recommendations) without a click is
+    filtered out of the feed."""
+    candidates_per_source: int = Field(default=500, ge=1)
+    """Top-N documents taken from each candidate source (PPR, each profile vector, recent
+    pinned, each exploration route, search)."""
+    feed_page_size: int = Field(default=20, ge=1)
+    max_per_domain_per_page: int = Field(default=2, ge=1)
+    """Diversity cap per feed page, unless no other domain has candidates left."""
     exploration_pct: float = Field(default=0.20, ge=0, le=1)
     """Default feed share for exploration; the user's survey answer overrides it."""
+    exploration_choices: list[float] = [0.10, 0.20, 0.35]
+    """Exploration shares the survey and settings offer (PLAN.md §7 step 4)."""
     exploration_split_semantic: float = Field(default=0.5, ge=0, le=1)
     """Semantic share of exploration slots; the remainder is graph-adjacent."""
-    recency_half_life_days: float = Field(default=7, gt=0)
-    max_per_domain_per_page: int = Field(default=2, ge=1)
-    """Diversity cap per 20 results."""
+    explore_band_skip: int = Field(default=500, ge=0)
+    """Semantic exploration skips this many nearest documents to the interest vector (the
+    top matches, which the main slice covers)..."""
+    explore_band_size: int = Field(default=1000, ge=1)
+    """...and takes the next this many: similar, but not a top match."""
+    explore_graph_max_hops: int = Field(default=2, ge=1)
+    """Graph exploration reaches domains up to this many domain-level links from a pin."""
+    default_content_types: list[DocumentType] = [
+        kind for kind in DocumentType if kind != DocumentType.PAGE
+    ]
+    """Before the survey is taken. Plain pages (homepages, listings) are opt-in."""
+    reasons_max: int = Field(default=3, ge=1)
+    """Plain-language reasons shown per item (PLAN.md §6.7)."""
+    reason_min_contribution: float = Field(default=0.1, ge=0)
+    """A component contributing less than this (weight x normalized value) gives no reason."""
+    reason_examples_max: int = Field(default=2, ge=1)
+    """Domains named in a "Linked from ..." reason."""
+    search_query_max_chars: int = Field(default=500, ge=1)
+    query_embedding_cache_size: int = Field(default=256, ge=0)
+    """Search query embeddings kept in memory, so paging through results costs no request."""
+    feedback_reason_max_chars: int = Field(default=2000, ge=1)
+    """Longest answer to "What did you like about it?"."""
+    events_max_batch: int = Field(default=200, ge=1)
+    """Most events accepted in one POST /events."""
+    metrics_days: int = Field(default=30, ge=1)
+    """Days of daily numbers in GET /admin/metrics."""
+    admin_cycles_shown: int = Field(default=60, ge=1)
+    """Crawl cycles listed by GET /admin/cycles."""
+
+    # Auth (PLAN.md §8): one-time login links from the worker CLI, then a session cookie.
+    app_base_url: str = "http://localhost:5173"
+    """Where the frontend is served; login links point at its /login page."""
+    login_token_ttl_minutes: float = Field(default=30, gt=0)
+    session_ttl_days: float = Field(default=30, gt=0)
+    session_cookie_name: str = "session"
+    session_cookie_secure: bool = True
+    """Send the cookie over HTTPS only; set false for plain-http local development."""
+    admin_emails: list[str] = []
+    """Users who may see /admin (the author). Compared lowercased."""
 
     # Model providers (PLAN.md §6.4, §6.8). Never send user identifiers to a provider.
     provider_monthly_spend_cap_usd: float = Field(default=40, ge=0)
@@ -177,6 +276,16 @@ class Settings(BaseSettings):
     """Writes the one-off topic descriptions in backend/data/taxonomy (PLAN.md §6.4)."""
     llm_concurrency: int = Field(default=8, ge=1)
     """Parallel LLM requests for batch jobs such as topic descriptions."""
+
+    @model_validator(mode="after")
+    def _every_preset_and_level_has_a_weight(self) -> Self:
+        missing = [
+            *(set(RankingPreset) - self.ranking_presets.keys()),
+            *(set(InterestLevel) - self.interest_level_weights.keys()),
+        ]
+        if missing:
+            raise ValueError(f"no weights for {sorted(missing)}")
+        return self
 
 
 @lru_cache

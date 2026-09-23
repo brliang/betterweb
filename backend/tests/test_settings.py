@@ -3,6 +3,7 @@ from datetime import time
 import pytest
 from pydantic import ValidationError
 
+from app.enums import RankingPreset
 from app.settings import Settings
 
 
@@ -69,3 +70,10 @@ def test_fields_are_documented() -> None:
     assert Settings.model_fields["max_internal_depth"].description == (
         "Link-clicks within one domain from its entry point."
     )
+
+
+def test_every_preset_and_interest_level_needs_weights() -> None:
+    defaults = Settings(_env_file=None)
+    partial = {RankingPreset.BALANCED: defaults.ranking_presets[RankingPreset.BALANCED]}
+    with pytest.raises(ValidationError, match="no weights for"):
+        Settings(_env_file=None, ranking_presets=partial)

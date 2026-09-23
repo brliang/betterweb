@@ -5,26 +5,452 @@
  * OpenAPI spec version: 0.1.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
 
 import { apiFetch } from '../fetcher';
 import type { ErrorType } from '../fetcher';
+export type Component = typeof Component[keyof typeof Component];
+
+
+export const Component = {
+  interest: 'interest',
+  ppr: 'ppr',
+  feedback: 'feedback',
+  recency: 'recency',
+  hide: 'hide',
+  query: 'query',
+} as const;
+
+export type ComponentScoreInputs = {[key: string]: number};
+
+export interface ComponentScore {
+  contribution: number;
+  inputs: ComponentScoreInputs;
+  name: Component;
+  value: number;
+  weight: number;
+}
+
+export type CycleStatus = typeof CycleStatus[keyof typeof CycleStatus];
+
+
+export const CycleStatus = {
+  running: 'running',
+  succeeded: 'succeeded',
+  failed: 'failed',
+} as const;
+
+export type CycleSummaryStats = { [key: string]: unknown };
+
+export interface CycleSummary {
+  duration_s: number | null;
+  finished_at: string | null;
+  id: number;
+  page_budget: number;
+  pages_fetched: number;
+  spend_usd: number;
+  started_at: string;
+  stats: CycleSummaryStats;
+  status: CycleStatus;
+}
+
+export interface DailyMetrics {
+  clicks: number;
+  day: string;
+  discoveries: number;
+  hides: number;
+  impressions: number;
+  likes: number;
+}
+
+export type DocumentType = typeof DocumentType[keyof typeof DocumentType];
+
+
+export const DocumentType = {
+  article: 'article',
+  post: 'post',
+  thread: 'thread',
+  paper: 'paper',
+  pdf: 'pdf',
+  video: 'video',
+  page: 'page',
+} as const;
+
+export interface DocumentCard {
+  author: string | null;
+  domain: string;
+  excerpt: string | null;
+  id: number;
+  published_at: string | null;
+  title: string | null;
+  type: DocumentType;
+  url: string;
+}
+
+export type EventInKind = typeof EventInKind[keyof typeof EventInKind];
+
+
+export const EventInKind = {
+  impression: 'impression',
+  click: 'click',
+} as const;
+
+export type Surface = typeof Surface[keyof typeof Surface];
+
+
+export const Surface = {
+  feed: 'feed',
+  search: 'search',
+} as const;
+
+export interface EventIn {
+  document_id: number;
+  kind: EventInKind;
+  position?: number | null;
+  recommendation_id?: number | null;
+  surface: Surface;
+}
+
+export interface EventsIn {
+  /** @minItems 1 */
+  events: EventIn[];
+}
+
+export interface EventsRecorded {
+  recorded: number;
+}
+
+export interface TopicRef {
+  id: number;
+  name: string;
+}
+
+export type Slice = typeof Slice[keyof typeof Slice];
+
+
+export const Slice = {
+  main: 'main',
+  adjacent_semantic: 'adjacent_semantic',
+  adjacent_graph: 'adjacent_graph',
+} as const;
+
+/**
+ * Why an exploration slice picked the item.
+ */
+export interface Exploration {
+  adjacent_topic?: TopicRef | null;
+  interest_topic?: TopicRef | null;
+  outside_topic?: TopicRef | null;
+  path?: string[];
+  slice: Slice;
+}
+
+export interface LikedRef {
+  document_id: number;
+  similarity: number;
+  title: string | null;
+}
+
+export interface Evidence {
+  age_days: number;
+  exploration?: Exploration | null;
+  interest_topics?: TopicRef[];
+  nearest_liked?: LikedRef | null;
+  other_linker_count?: number;
+  other_linkers?: string[];
+  pinned_domain?: string | null;
+  published: boolean;
+  trusted_linker_count?: number;
+  trusted_linkers?: string[];
+}
+
+export type ReasonKind = typeof ReasonKind[keyof typeof ReasonKind];
+
+
+export const ReasonKind = {
+  exploration: 'exploration',
+  sources: 'sources',
+  interest: 'interest',
+  liked: 'liked',
+  recency: 'recency',
+  search: 'search',
+} as const;
+
+export interface Reason {
+  kind: ReasonKind;
+  text: string;
+}
+
+export interface FeedItem {
+  document: DocumentCard;
+  position: number;
+  reasons: Reason[];
+  recommendation_id: number;
+  score: number;
+  slice: Slice;
+}
+
+export interface FeedPage {
+  items: FeedItem[];
+  next_cursor: string | null;
+}
+
+export type FeedbackKind = typeof FeedbackKind[keyof typeof FeedbackKind];
+
+
+export const FeedbackKind = {
+  like: 'like',
+  hide: 'hide',
+  block_domain: 'block_domain',
+} as const;
+
+export interface FeedbackIn {
+  document_id: number;
+  kind: FeedbackKind;
+  position?: number | null;
+  reason_text?: string | null;
+  recommendation_id?: number | null;
+}
+
+export interface FeedbackOut {
+  created_at: string;
+  document_id: number;
+  id: number;
+  kind: FeedbackKind;
+  reason_text: string | null;
+}
+
+export interface FeedbackReasonIn {
+  reason_text: string | null;
+}
+
+export type ValidationErrorCtx = { [key: string]: unknown };
+
+export interface ValidationError {
+  ctx?: ValidationErrorCtx;
+  input?: unknown;
+  loc: (string | number)[];
+  msg: string;
+  type: string;
+}
+
+export interface HTTPValidationError {
+  detail?: ValidationError[];
+}
+
 export const HealthValue = {
   status: 'ok',
 } as const;
 export type Health = typeof HealthValue;
+
+/**
+ * How strongly a user picked an interest in the survey (PLAN.md §7 step 1); stored as the
+ * weight INTEREST_LEVEL_WEIGHTS gives it.
+ */
+export type InterestLevel = typeof InterestLevel[keyof typeof InterestLevel];
+
+
+export const InterestLevel = {
+  interested: 'interested',
+  very_interested: 'very_interested',
+} as const;
+
+export interface InterestChoice {
+  level: InterestLevel;
+  topic_id: number;
+}
+
+export interface LoginRequest {
+  token: string;
+}
+
+export interface Me {
+  email: string;
+  is_admin: boolean;
+  survey_completed: boolean;
+  timezone: string;
+}
+
+export interface TypeCount {
+  documents: number;
+  type: DocumentType;
+}
+
+export interface SliceMetrics {
+  click_through: number | null;
+  clicks: number;
+  impressions: number;
+  slice: Slice;
+}
+
+export interface Metrics {
+  corpus: TypeCount[];
+  daily: DailyMetrics[];
+  days: number;
+  documents: number;
+  embedded: number;
+  frontier_due: number;
+  frontier_new: number;
+  frontier_recrawl: number;
+  hide_rate: number | null;
+  month_spend_usd: number;
+  slices: SliceMetrics[];
+  spend_cap_usd: number;
+}
+
+export interface PinIn {
+  site: string;
+}
+
+export type PinSource = typeof PinSource[keyof typeof PinSource];
+
+
+export const PinSource = {
+  survey: 'survey',
+  suggested: 'suggested',
+} as const;
+
+export interface PinOut {
+  created_at: string;
+  domain_id: number;
+  host: string;
+  name: string | null;
+  source: PinSource;
+}
+
+/**
+ * Survey step 5 (PLAN.md §7); RANKING_PRESETS maps each to ranking weights.
+ */
+export type RankingPreset = typeof RankingPreset[keyof typeof RankingPreset];
+
+
+export const RankingPreset = {
+  balanced: 'balanced',
+  trust_my_sources: 'trust_my_sources',
+  match_my_interests: 'match_my_interests',
+  fresh: 'fresh',
+} as const;
+
+/**
+ * Weights of the ranking components (PLAN.md §6.6); all non-negative, the hide penalty
+ * is subtracted.
+ */
+export interface RankingWeights {
+  /** @minimum 0 */
+  feedback: number;
+  /** @minimum 0 */
+  hide: number;
+  /** @minimum 0 */
+  interest: number;
+  /** @minimum 0 */
+  ppr: number;
+  /** @minimum 0 */
+  recency: number;
+}
+
+export interface SuggestedSourceOut {
+  description: string;
+  feed: string;
+  host: string;
+  name: string;
+  topics: TopicRef[];
+  url: string;
+}
+
+/**
+ * Version 1 of the survey, one field per step.
+ */
+export interface SurveyAnswers {
+  /** @minItems 1 */
+  content_types: DocumentType[];
+  exploration_pct: number;
+  /** @minItems 1 */
+  interests: InterestChoice[];
+  preset: RankingPreset;
+  sites?: string[];
+}
+
+export interface SurveyOut {
+  answers: SurveyAnswers;
+  created_at: string;
+  id: number;
+  version: number;
+}
+
+export interface SurveySubmission {
+  answers: SurveyAnswers;
+  version?: 1;
+}
+
+export interface TopicOut {
+  description: string | null;
+  external_id: string;
+  id: number;
+  name: string;
+  parent_id: number | null;
+  tier: number;
+}
+
+export interface UserSettingsIn {
+  /** @minItems 1 */
+  content_types: DocumentType[];
+  exploration_pct: number;
+  interests: InterestChoice[];
+  preset: RankingPreset;
+  summaries_opt_in: boolean;
+}
+
+export interface UserSettingsOut {
+  content_types: DocumentType[];
+  exploration_choices: number[];
+  exploration_pct: number;
+  exploration_split_semantic: number;
+  interests: InterestChoice[];
+  preset: RankingPreset | null;
+  summaries_opt_in: boolean;
+  weights: RankingWeights;
+}
+
+export interface Why {
+  components: ComponentScore[];
+  created_at: string;
+  document: DocumentCard;
+  evidence: Evidence;
+  query: string | null;
+  reasons: Reason[];
+  recommendation_id: number;
+  score: number;
+  slice: Slice;
+  surface: Surface;
+}
+
+export type FeedParams = {
+cursor?: string | null;
+};
+
+export type SearchParams = {
+/**
+ * @minLength 1
+ */
+q: string;
+cursor?: string | null;
+};
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
@@ -44,6 +470,751 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getCyclesUrl = () => {
+
+
+
+
+  return `/api/admin/cycles`
+}
+
+/**
+ * The most recent crawl cycles (ADMIN_CYCLES_SHOWN), newest first.
+ * @summary Cycles
+ */
+export const cycles = async ( options?: Parameters<typeof apiFetch>[1]): Promise<CycleSummary[]> => {
+
+  return apiFetch<CycleSummary[]>(getCyclesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getCyclesQueryKey = () => {
+    return [
+    `/api/admin/cycles`
+    ] as const;
+    }
+
+
+export const getCyclesQueryOptions = <TData = Awaited<ReturnType<typeof cycles>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof cycles>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCyclesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof cycles>>> = ({ signal }) => cycles({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof cycles>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type CyclesQueryResult = NonNullable<Awaited<ReturnType<typeof cycles>>>
+export type CyclesQueryError = ErrorType<unknown>
+
+
+export function useCycles<TData = Awaited<ReturnType<typeof cycles>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof cycles>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof cycles>>,
+          TError,
+          Awaited<ReturnType<typeof cycles>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCycles<TData = Awaited<ReturnType<typeof cycles>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof cycles>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof cycles>>,
+          TError,
+          Awaited<ReturnType<typeof cycles>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCycles<TData = Awaited<ReturnType<typeof cycles>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof cycles>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Cycles
+ */
+
+export function useCycles<TData = Awaited<ReturnType<typeof cycles>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof cycles>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getCyclesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMetricsUrl = () => {
+
+
+
+
+  return `/api/admin/metrics`
+}
+
+/**
+ * @summary Metrics
+ */
+export const metrics = async ( options?: Parameters<typeof apiFetch>[1]): Promise<Metrics> => {
+
+  return apiFetch<Metrics>(getMetricsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getMetricsQueryKey = () => {
+    return [
+    `/api/admin/metrics`
+    ] as const;
+    }
+
+
+export const getMetricsQueryOptions = <TData = Awaited<ReturnType<typeof metrics>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metrics>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getMetricsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof metrics>>> = ({ signal }) => metrics({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof metrics>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type MetricsQueryResult = NonNullable<Awaited<ReturnType<typeof metrics>>>
+export type MetricsQueryError = ErrorType<unknown>
+
+
+export function useMetrics<TData = Awaited<ReturnType<typeof metrics>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof metrics>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof metrics>>,
+          TError,
+          Awaited<ReturnType<typeof metrics>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useMetrics<TData = Awaited<ReturnType<typeof metrics>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metrics>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof metrics>>,
+          TError,
+          Awaited<ReturnType<typeof metrics>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useMetrics<TData = Awaited<ReturnType<typeof metrics>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metrics>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Metrics
+ */
+
+export function useMetrics<TData = Awaited<ReturnType<typeof metrics>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metrics>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getMetricsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSignOutUrl = () => {
+
+
+
+
+  return `/api/auth/logout`
+}
+
+/**
+ * @summary Sign Out
+ */
+export const signOut = async ( options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getSignOutUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSignOutMutationKey = () => ['signOut'] as const;
+
+export const getSignOutMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof signOut>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof signOut>>, TError,void, TContext> => {
+
+const mutationKey = getSignOutMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof signOut>>, void> = () => {
+
+
+          return  signOut(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SignOutMutationResult = NonNullable<Awaited<ReturnType<typeof signOut>>>
+
+    export type SignOutMutationError = ErrorType<unknown>
+
+
+    /**
+ * @summary Sign Out
+ */
+export const useSignOut = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof signOut>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof signOut>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getSignOutMutationOptions(options), queryClient);
+    }
+
+export const getSignInUrl = () => {
+
+
+
+
+  return `/api/auth/session`
+}
+
+/**
+ * Trade a one-time login token for a session cookie.
+ * @summary Sign In
+ */
+export const signIn = async (loginRequest: LoginRequest, options?: Parameters<typeof apiFetch>[1]): Promise<Me> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<Me>(getSignInUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(loginRequest)
+  }
+);}
+
+
+
+
+
+export const getSignInMutationKey = () => ['signIn'] as const;
+
+export const getSignInMutationOptions = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof signIn>>, TError,SignInMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof signIn>>, TError,SignInMutationVariables, TContext> => {
+
+const mutationKey = getSignInMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof signIn>>, SignInMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  signIn(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SignInMutationResult = NonNullable<Awaited<ReturnType<typeof signIn>>>
+    export type SignInMutationBody = LoginRequest
+    export type SignInMutationError = ErrorType<HTTPValidationError>
+    export type SignInMutationVariables = {data: LoginRequest}
+
+    /**
+ * @summary Sign In
+ */
+export const useSignIn = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof signIn>>, TError,SignInMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof signIn>>,
+        TError,
+        SignInMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSignInMutationOptions(options), queryClient);
+    }
+
+export const getRecordEventsUrl = () => {
+
+
+
+
+  return `/api/events`
+}
+
+/**
+ * Record a batch of impressions and clicks.
+ * @summary Record Events
+ */
+export const recordEvents = async (eventsIn: EventsIn, options?: Parameters<typeof apiFetch>[1]): Promise<EventsRecorded> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<EventsRecorded>(getRecordEventsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(eventsIn)
+  }
+);}
+
+
+
+
+
+export const getRecordEventsMutationKey = () => ['recordEvents'] as const;
+
+export const getRecordEventsMutationOptions = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordEvents>>, TError,RecordEventsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordEvents>>, TError,RecordEventsMutationVariables, TContext> => {
+
+const mutationKey = getRecordEventsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordEvents>>, RecordEventsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  recordEvents(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordEventsMutationResult = NonNullable<Awaited<ReturnType<typeof recordEvents>>>
+    export type RecordEventsMutationBody = EventsIn
+    export type RecordEventsMutationError = ErrorType<HTTPValidationError>
+    export type RecordEventsMutationVariables = {data: EventsIn}
+
+    /**
+ * @summary Record Events
+ */
+export const useRecordEvents = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordEvents>>, TError,RecordEventsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof recordEvents>>,
+        TError,
+        RecordEventsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecordEventsMutationOptions(options), queryClient);
+    }
+
+export const getFeedUrl = (params?: FeedParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/feed?${stringifiedParams}` : `/api/feed`
+}
+
+/**
+ * The next page of the user's feed. Without a cursor, a new feed session starts.
+ * @summary Feed
+ */
+export const feed = async (params?: FeedParams, options?: Parameters<typeof apiFetch>[1]): Promise<FeedPage> => {
+
+  return apiFetch<FeedPage>(getFeedUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getFeedQueryKey = (params?: FeedParams,) => {
+    return [
+    `/api/feed`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getFeedQueryOptions = <TData = Awaited<ReturnType<typeof feed>>, TError = ErrorType<HTTPValidationError>>(params?: FeedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getFeedQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof feed>>> = ({ signal }) => feed(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type FeedQueryResult = NonNullable<Awaited<ReturnType<typeof feed>>>
+export type FeedQueryError = ErrorType<HTTPValidationError>
+
+
+export function useFeed<TData = Awaited<ReturnType<typeof feed>>, TError = ErrorType<HTTPValidationError>>(
+ params: undefined |  FeedParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof feed>>,
+          TError,
+          Awaited<ReturnType<typeof feed>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useFeed<TData = Awaited<ReturnType<typeof feed>>, TError = ErrorType<HTTPValidationError>>(
+ params?: FeedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof feed>>,
+          TError,
+          Awaited<ReturnType<typeof feed>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useFeed<TData = Awaited<ReturnType<typeof feed>>, TError = ErrorType<HTTPValidationError>>(
+ params?: FeedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Feed
+ */
+
+export function useFeed<TData = Awaited<ReturnType<typeof feed>>, TError = ErrorType<HTTPValidationError>>(
+ params?: FeedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getFeedQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGiveFeedbackUrl = () => {
+
+
+
+
+  return `/api/feedback`
+}
+
+/**
+ * Like, hide, or block the document's domain. Hidden documents and blocked domains leave
+ * the feed at once; likes and hides reshape the profile vectors right away too.
+ * @summary Give Feedback
+ */
+export const giveFeedback = async (feedbackIn: FeedbackIn, options?: Parameters<typeof apiFetch>[1]): Promise<FeedbackOut> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<FeedbackOut>(getGiveFeedbackUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(feedbackIn)
+  }
+);}
+
+
+
+
+
+export const getGiveFeedbackMutationKey = () => ['giveFeedback'] as const;
+
+export const getGiveFeedbackMutationOptions = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof giveFeedback>>, TError,GiveFeedbackMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof giveFeedback>>, TError,GiveFeedbackMutationVariables, TContext> => {
+
+const mutationKey = getGiveFeedbackMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof giveFeedback>>, GiveFeedbackMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  giveFeedback(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GiveFeedbackMutationResult = NonNullable<Awaited<ReturnType<typeof giveFeedback>>>
+    export type GiveFeedbackMutationBody = FeedbackIn
+    export type GiveFeedbackMutationError = ErrorType<HTTPValidationError>
+    export type GiveFeedbackMutationVariables = {data: FeedbackIn}
+
+    /**
+ * @summary Give Feedback
+ */
+export const useGiveFeedback = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof giveFeedback>>, TError,GiveFeedbackMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof giveFeedback>>,
+        TError,
+        GiveFeedbackMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGiveFeedbackMutationOptions(options), queryClient);
+    }
+
+export const getSetFeedbackReasonUrl = (feedbackId: number,) => {
+
+
+
+
+  return `/api/feedback/${feedbackId}`
+}
+
+/**
+ * Add (or clear) the optional reason after the fact: the "What did you like about it?"
+ * prompt comes after the like.
+ * @summary Set Feedback Reason
+ */
+export const setFeedbackReason = async (feedbackId: number,
+    feedbackReasonIn: FeedbackReasonIn, options?: Parameters<typeof apiFetch>[1]): Promise<FeedbackOut> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<FeedbackOut>(getSetFeedbackReasonUrl(feedbackId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(feedbackReasonIn)
+  }
+);}
+
+
+
+
+
+export const getSetFeedbackReasonMutationKey = () => ['setFeedbackReason'] as const;
+
+export const getSetFeedbackReasonMutationOptions = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setFeedbackReason>>, TError,SetFeedbackReasonMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setFeedbackReason>>, TError,SetFeedbackReasonMutationVariables, TContext> => {
+
+const mutationKey = getSetFeedbackReasonMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setFeedbackReason>>, SetFeedbackReasonMutationVariables> = (props) => {
+          const {feedbackId,data} = props ?? {};
+
+          return  setFeedbackReason(feedbackId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetFeedbackReasonMutationResult = NonNullable<Awaited<ReturnType<typeof setFeedbackReason>>>
+    export type SetFeedbackReasonMutationBody = FeedbackReasonIn
+    export type SetFeedbackReasonMutationError = ErrorType<HTTPValidationError>
+    export type SetFeedbackReasonMutationVariables = {feedbackId: number;data: FeedbackReasonIn}
+
+    /**
+ * @summary Set Feedback Reason
+ */
+export const useSetFeedbackReason = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setFeedbackReason>>, TError,SetFeedbackReasonMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof setFeedbackReason>>,
+        TError,
+        SetFeedbackReasonMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetFeedbackReasonMutationOptions(options), queryClient);
+    }
 
 export const getHealthUrl = () => {
 
@@ -134,6 +1305,1168 @@ export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = E
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getHealthQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMeUrl = () => {
+
+
+
+
+  return `/api/me`
+}
+
+/**
+ * @summary Me
+ */
+export const me = async ( options?: Parameters<typeof apiFetch>[1]): Promise<Me> => {
+
+  return apiFetch<Me>(getMeUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getMeQueryKey = () => {
+    return [
+    `/api/me`
+    ] as const;
+    }
+
+
+export const getMeQueryOptions = <TData = Awaited<ReturnType<typeof me>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof me>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getMeQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof me>>> = ({ signal }) => me({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof me>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type MeQueryResult = NonNullable<Awaited<ReturnType<typeof me>>>
+export type MeQueryError = ErrorType<unknown>
+
+
+export function useMe<TData = Awaited<ReturnType<typeof me>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof me>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof me>>,
+          TError,
+          Awaited<ReturnType<typeof me>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useMe<TData = Awaited<ReturnType<typeof me>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof me>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof me>>,
+          TError,
+          Awaited<ReturnType<typeof me>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useMe<TData = Awaited<ReturnType<typeof me>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof me>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Me
+ */
+
+export function useMe<TData = Awaited<ReturnType<typeof me>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof me>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getMeQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListPinsUrl = () => {
+
+
+
+
+  return `/api/pins`
+}
+
+/**
+ * @summary List Pins
+ */
+export const listPins = async ( options?: Parameters<typeof apiFetch>[1]): Promise<PinOut[]> => {
+
+  return apiFetch<PinOut[]>(getListPinsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPinsQueryKey = () => {
+    return [
+    `/api/pins`
+    ] as const;
+    }
+
+
+export const getListPinsQueryOptions = <TData = Awaited<ReturnType<typeof listPins>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPins>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPinsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPins>>> = ({ signal }) => listPins({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPins>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListPinsQueryResult = NonNullable<Awaited<ReturnType<typeof listPins>>>
+export type ListPinsQueryError = ErrorType<unknown>
+
+
+export function useListPins<TData = Awaited<ReturnType<typeof listPins>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPins>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPins>>,
+          TError,
+          Awaited<ReturnType<typeof listPins>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListPins<TData = Awaited<ReturnType<typeof listPins>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPins>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPins>>,
+          TError,
+          Awaited<ReturnType<typeof listPins>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListPins<TData = Awaited<ReturnType<typeof listPins>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPins>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Pins
+ */
+
+export function useListPins<TData = Awaited<ReturnType<typeof listPins>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPins>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListPinsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAddPinUrl = () => {
+
+
+
+
+  return `/api/pins`
+}
+
+/**
+ * Pin a site (idempotent); its homepage and feeds join the crawl frontier.
+ * @summary Add Pin
+ */
+export const addPin = async (pinIn: PinIn, options?: Parameters<typeof apiFetch>[1]): Promise<PinOut> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<PinOut>(getAddPinUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(pinIn)
+  }
+);}
+
+
+
+
+
+export const getAddPinMutationKey = () => ['addPin'] as const;
+
+export const getAddPinMutationOptions = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addPin>>, TError,AddPinMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addPin>>, TError,AddPinMutationVariables, TContext> => {
+
+const mutationKey = getAddPinMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addPin>>, AddPinMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  addPin(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddPinMutationResult = NonNullable<Awaited<ReturnType<typeof addPin>>>
+    export type AddPinMutationBody = PinIn
+    export type AddPinMutationError = ErrorType<HTTPValidationError>
+    export type AddPinMutationVariables = {data: PinIn}
+
+    /**
+ * @summary Add Pin
+ */
+export const useAddPin = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addPin>>, TError,AddPinMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof addPin>>,
+        TError,
+        AddPinMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAddPinMutationOptions(options), queryClient);
+    }
+
+export const getRemovePinUrl = (domainId: number,) => {
+
+
+
+
+  return `/api/pins/${domainId}`
+}
+
+/**
+ * Unpin a site. What was crawled stays in the shared graph; the user's scores follow at
+ * the next cycle.
+ * @summary Remove Pin
+ */
+export const removePin = async (domainId: number, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getRemovePinUrl(domainId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemovePinMutationKey = () => ['removePin'] as const;
+
+export const getRemovePinMutationOptions = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removePin>>, TError,RemovePinMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removePin>>, TError,RemovePinMutationVariables, TContext> => {
+
+const mutationKey = getRemovePinMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removePin>>, RemovePinMutationVariables> = (props) => {
+          const {domainId} = props ?? {};
+
+          return  removePin(domainId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemovePinMutationResult = NonNullable<Awaited<ReturnType<typeof removePin>>>
+
+    export type RemovePinMutationError = ErrorType<HTTPValidationError>
+    export type RemovePinMutationVariables = {domainId: number}
+
+    /**
+ * @summary Remove Pin
+ */
+export const useRemovePin = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removePin>>, TError,RemovePinMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removePin>>,
+        TError,
+        RemovePinMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemovePinMutationOptions(options), queryClient);
+    }
+
+export const getWhyUrl = (recommendationId: number,) => {
+
+
+
+
+  return `/api/recommendations/${recommendationId}/why`
+}
+
+/**
+ * The full score breakdown of a served item (PLAN.md §6.7). Logs a `why_open` event.
+ * @summary Why
+ */
+export const why = async (recommendationId: number, options?: Parameters<typeof apiFetch>[1]): Promise<Why> => {
+
+  return apiFetch<Why>(getWhyUrl(recommendationId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getWhyQueryKey = (recommendationId: number,) => {
+    return [
+    `/api/recommendations/${recommendationId}/why`
+    ] as const;
+    }
+
+
+export const getWhyQueryOptions = <TData = Awaited<ReturnType<typeof why>>, TError = ErrorType<HTTPValidationError>>(recommendationId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof why>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getWhyQueryKey(recommendationId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof why>>> = ({ signal }) => why(recommendationId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: recommendationId !== null && recommendationId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof why>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type WhyQueryResult = NonNullable<Awaited<ReturnType<typeof why>>>
+export type WhyQueryError = ErrorType<HTTPValidationError>
+
+
+export function useWhy<TData = Awaited<ReturnType<typeof why>>, TError = ErrorType<HTTPValidationError>>(
+ recommendationId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof why>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof why>>,
+          TError,
+          Awaited<ReturnType<typeof why>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useWhy<TData = Awaited<ReturnType<typeof why>>, TError = ErrorType<HTTPValidationError>>(
+ recommendationId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof why>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof why>>,
+          TError,
+          Awaited<ReturnType<typeof why>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useWhy<TData = Awaited<ReturnType<typeof why>>, TError = ErrorType<HTTPValidationError>>(
+ recommendationId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof why>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Why
+ */
+
+export function useWhy<TData = Awaited<ReturnType<typeof why>>, TError = ErrorType<HTTPValidationError>>(
+ recommendationId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof why>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getWhyQueryOptions(recommendationId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSearchUrl = (params: SearchParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/search?${stringifiedParams}` : `/api/search`
+}
+
+/**
+ * Documents matching the query, ranked with the user's own signals on top.
+ * @summary Search
+ */
+export const search = async (params: SearchParams, options?: Parameters<typeof apiFetch>[1]): Promise<FeedPage> => {
+
+  return apiFetch<FeedPage>(getSearchUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchQueryKey = (params?: SearchParams,) => {
+    return [
+    `/api/search`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchQueryOptions = <TData = Awaited<ReturnType<typeof search>>, TError = ErrorType<HTTPValidationError>>(params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof search>>> = ({ signal }) => search(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SearchQueryResult = NonNullable<Awaited<ReturnType<typeof search>>>
+export type SearchQueryError = ErrorType<HTTPValidationError>
+
+
+export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = ErrorType<HTTPValidationError>>(
+ params: SearchParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof search>>,
+          TError,
+          Awaited<ReturnType<typeof search>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = ErrorType<HTTPValidationError>>(
+ params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof search>>,
+          TError,
+          Awaited<ReturnType<typeof search>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = ErrorType<HTTPValidationError>>(
+ params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Search
+ */
+
+export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = ErrorType<HTTPValidationError>>(
+ params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSearchQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUserSettingsUrl = () => {
+
+
+
+
+  return `/api/settings`
+}
+
+/**
+ * The user's settings, or the defaults before the survey.
+ * @summary User Settings
+ */
+export const userSettings = async ( options?: Parameters<typeof apiFetch>[1]): Promise<UserSettingsOut> => {
+
+  return apiFetch<UserSettingsOut>(getUserSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getUserSettingsQueryKey = () => {
+    return [
+    `/api/settings`
+    ] as const;
+    }
+
+
+export const getUserSettingsQueryOptions = <TData = Awaited<ReturnType<typeof userSettings>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof userSettings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getUserSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof userSettings>>> = ({ signal }) => userSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof userSettings>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type UserSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof userSettings>>>
+export type UserSettingsQueryError = ErrorType<unknown>
+
+
+export function useUserSettings<TData = Awaited<ReturnType<typeof userSettings>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof userSettings>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof userSettings>>,
+          TError,
+          Awaited<ReturnType<typeof userSettings>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useUserSettings<TData = Awaited<ReturnType<typeof userSettings>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof userSettings>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof userSettings>>,
+          TError,
+          Awaited<ReturnType<typeof userSettings>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useUserSettings<TData = Awaited<ReturnType<typeof userSettings>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof userSettings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary User Settings
+ */
+
+export function useUserSettings<TData = Awaited<ReturnType<typeof userSettings>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof userSettings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getUserSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateUserSettingsUrl = () => {
+
+
+
+
+  return `/api/settings`
+}
+
+/**
+ * @summary Update User Settings
+ */
+export const updateUserSettings = async (userSettingsIn: UserSettingsIn, options?: Parameters<typeof apiFetch>[1]): Promise<UserSettingsOut> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<UserSettingsOut>(getUpdateUserSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(userSettingsIn)
+  }
+);}
+
+
+
+
+
+export const getUpdateUserSettingsMutationKey = () => ['updateUserSettings'] as const;
+
+export const getUpdateUserSettingsMutationOptions = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUserSettings>>, TError,UpdateUserSettingsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateUserSettings>>, TError,UpdateUserSettingsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateUserSettingsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateUserSettings>>, UpdateUserSettingsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateUserSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateUserSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateUserSettings>>>
+    export type UpdateUserSettingsMutationBody = UserSettingsIn
+    export type UpdateUserSettingsMutationError = ErrorType<HTTPValidationError>
+    export type UpdateUserSettingsMutationVariables = {data: UserSettingsIn}
+
+    /**
+ * @summary Update User Settings
+ */
+export const useUpdateUserSettings = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUserSettings>>, TError,UpdateUserSettingsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateUserSettings>>,
+        TError,
+        UpdateUserSettingsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateUserSettingsMutationOptions(options), queryClient);
+    }
+
+export const getListSuggestedSourcesUrl = () => {
+
+
+
+
+  return `/api/suggested-sources`
+}
+
+/**
+ * @summary List Suggested Sources
+ */
+export const listSuggestedSources = async ( options?: Parameters<typeof apiFetch>[1]): Promise<SuggestedSourceOut[]> => {
+
+  return apiFetch<SuggestedSourceOut[]>(getListSuggestedSourcesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSuggestedSourcesQueryKey = () => {
+    return [
+    `/api/suggested-sources`
+    ] as const;
+    }
+
+
+export const getListSuggestedSourcesQueryOptions = <TData = Awaited<ReturnType<typeof listSuggestedSources>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSuggestedSources>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSuggestedSourcesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSuggestedSources>>> = ({ signal }) => listSuggestedSources({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSuggestedSources>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListSuggestedSourcesQueryResult = NonNullable<Awaited<ReturnType<typeof listSuggestedSources>>>
+export type ListSuggestedSourcesQueryError = ErrorType<unknown>
+
+
+export function useListSuggestedSources<TData = Awaited<ReturnType<typeof listSuggestedSources>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSuggestedSources>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSuggestedSources>>,
+          TError,
+          Awaited<ReturnType<typeof listSuggestedSources>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSuggestedSources<TData = Awaited<ReturnType<typeof listSuggestedSources>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSuggestedSources>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSuggestedSources>>,
+          TError,
+          Awaited<ReturnType<typeof listSuggestedSources>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSuggestedSources<TData = Awaited<ReturnType<typeof listSuggestedSources>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSuggestedSources>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Suggested Sources
+ */
+
+export function useListSuggestedSources<TData = Awaited<ReturnType<typeof listSuggestedSources>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSuggestedSources>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListSuggestedSourcesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSubmitSurveyUrl = () => {
+
+
+
+
+  return `/api/survey`
+}
+
+/**
+ * Store the answers and apply them: they replace the user's interests, pins and
+ * settings (summaries stay as they were: off unless opted in on the settings page).
+ * @summary Submit Survey
+ */
+export const submitSurvey = async (surveySubmission: SurveySubmission, options?: Parameters<typeof apiFetch>[1]): Promise<SurveyOut> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<SurveyOut>(getSubmitSurveyUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(surveySubmission)
+  }
+);}
+
+
+
+
+
+export const getSubmitSurveyMutationKey = () => ['submitSurvey'] as const;
+
+export const getSubmitSurveyMutationOptions = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSurvey>>, TError,SubmitSurveyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitSurvey>>, TError,SubmitSurveyMutationVariables, TContext> => {
+
+const mutationKey = getSubmitSurveyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitSurvey>>, SubmitSurveyMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitSurvey(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitSurveyMutationResult = NonNullable<Awaited<ReturnType<typeof submitSurvey>>>
+    export type SubmitSurveyMutationBody = SurveySubmission
+    export type SubmitSurveyMutationError = ErrorType<HTTPValidationError>
+    export type SubmitSurveyMutationVariables = {data: SurveySubmission}
+
+    /**
+ * @summary Submit Survey
+ */
+export const useSubmitSurvey = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSurvey>>, TError,SubmitSurveyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof submitSurvey>>,
+        TError,
+        SubmitSurveyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSubmitSurveyMutationOptions(options), queryClient);
+    }
+
+export const getLatestSurveyUrl = () => {
+
+
+
+
+  return `/api/survey/latest`
+}
+
+/**
+ * @summary Latest Survey
+ */
+export const latestSurvey = async ( options?: Parameters<typeof apiFetch>[1]): Promise<SurveyOut> => {
+
+  return apiFetch<SurveyOut>(getLatestSurveyUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getLatestSurveyQueryKey = () => {
+    return [
+    `/api/survey/latest`
+    ] as const;
+    }
+
+
+export const getLatestSurveyQueryOptions = <TData = Awaited<ReturnType<typeof latestSurvey>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof latestSurvey>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getLatestSurveyQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof latestSurvey>>> = ({ signal }) => latestSurvey({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof latestSurvey>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type LatestSurveyQueryResult = NonNullable<Awaited<ReturnType<typeof latestSurvey>>>
+export type LatestSurveyQueryError = ErrorType<unknown>
+
+
+export function useLatestSurvey<TData = Awaited<ReturnType<typeof latestSurvey>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof latestSurvey>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof latestSurvey>>,
+          TError,
+          Awaited<ReturnType<typeof latestSurvey>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useLatestSurvey<TData = Awaited<ReturnType<typeof latestSurvey>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof latestSurvey>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof latestSurvey>>,
+          TError,
+          Awaited<ReturnType<typeof latestSurvey>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useLatestSurvey<TData = Awaited<ReturnType<typeof latestSurvey>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof latestSurvey>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Latest Survey
+ */
+
+export function useLatestSurvey<TData = Awaited<ReturnType<typeof latestSurvey>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof latestSurvey>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getLatestSurveyQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getTaxonomyUrl = () => {
+
+
+
+
+  return `/api/taxonomy`
+}
+
+/**
+ * Every topic, tier by tier; the survey offers tier 1, expandable to tier 2.
+ * @summary Taxonomy
+ */
+export const taxonomy = async ( options?: Parameters<typeof apiFetch>[1]): Promise<TopicOut[]> => {
+
+  return apiFetch<TopicOut[]>(getTaxonomyUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getTaxonomyQueryKey = () => {
+    return [
+    `/api/taxonomy`
+    ] as const;
+    }
+
+
+export const getTaxonomyQueryOptions = <TData = Awaited<ReturnType<typeof taxonomy>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof taxonomy>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getTaxonomyQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof taxonomy>>> = ({ signal }) => taxonomy({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof taxonomy>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type TaxonomyQueryResult = NonNullable<Awaited<ReturnType<typeof taxonomy>>>
+export type TaxonomyQueryError = ErrorType<unknown>
+
+
+export function useTaxonomy<TData = Awaited<ReturnType<typeof taxonomy>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof taxonomy>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof taxonomy>>,
+          TError,
+          Awaited<ReturnType<typeof taxonomy>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useTaxonomy<TData = Awaited<ReturnType<typeof taxonomy>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof taxonomy>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof taxonomy>>,
+          TError,
+          Awaited<ReturnType<typeof taxonomy>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useTaxonomy<TData = Awaited<ReturnType<typeof taxonomy>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof taxonomy>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Taxonomy
+ */
+
+export function useTaxonomy<TData = Awaited<ReturnType<typeof taxonomy>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof taxonomy>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getTaxonomyQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

@@ -16,6 +16,8 @@ The full design and milestone list is in [docs/PLAN.md](docs/PLAN.md).
 | `backend/app/ingest/` | Extraction: document types, text and metadata, links, dedup |
 | `backend/app/embed/` | The embed stage: document embeddings and topic tags |
 | `backend/app/score/` | The scoring stage: PageRank over the link graph, per-user rankings, profile vectors |
+| `backend/app/rank/` | Ranking: candidates, scores, feed composition and "why this?" explanations |
+| `backend/app/api/` | The API routes: auth, survey, settings, pins, feed, search, feedback, admin |
 | `backend/tests/fixtures/pages/` | Real saved pages (redistributable) that the extraction tests run on |
 | `backend/migrations/` | Alembic migrations, including the DB roles that keep the schemas apart |
 | `backend/app/providers/` | Embedding and LLM providers (OpenRouter), behind interfaces |
@@ -55,8 +57,14 @@ cd backend
 uv run python -m app.worker frontier seed https://example.com/ --feed https://example.com/feed.xml
 uv run python -m app.worker cycle run    # run, or resume after a kill, the crawl cycle
 uv run python -m app.worker taxonomy embed   # embed changed topics and re-tag every document
+uv run python -m app.worker users login-link you@example.com   # one-time sign-in link
 docker compose run --rm worker cycle run
 ```
+
+There is one account per email and no sign-up page: `users login-link` prints a one-time link
+to the frontend's `/login` page, which exchanges it for a session cookie. For plain-http local
+development set `SESSION_COOKIE_SECURE=false`; put your email in `ADMIN_EMAILS` to see
+`/admin`.
 
 The crawler identifies itself as `bribot`. `cycle run` refuses to crawl until `USER_AGENT` names
 a real contact page for it (docs/PLAN.md §14 Q5): sites need a way to reach whoever runs the

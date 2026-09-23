@@ -20,6 +20,7 @@ from app.enums import (
     InterestSource,
     PinSource,
     ProfileVectorKind,
+    RankingPreset,
     Slice,
     Surface,
     Visibility,
@@ -54,6 +55,32 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=NOW)
 
 
+class LoginToken(Base):
+    """A one-time login link (PLAN.md §8 auth). Only the token's SHA-256 is stored."""
+
+    __tablename__ = "login_tokens"
+    __table_args__ = ({"schema": USR},)
+
+    token_hash: Mapped[str] = mapped_column(primary_key=True)
+    user_id: Mapped[uuid.UUID] = user_fk()
+    created_at: Mapped[datetime] = mapped_column(server_default=NOW)
+    expires_at: Mapped[datetime]
+    used_at: Mapped[datetime | None]
+
+
+class UserSession(Base):
+    """A signed-in browser, identified by its session cookie. Only the token's SHA-256 is
+    stored."""
+
+    __tablename__ = "sessions"
+    __table_args__ = ({"schema": USR},)
+
+    token_hash: Mapped[str] = mapped_column(primary_key=True)
+    user_id: Mapped[uuid.UUID] = user_fk()
+    created_at: Mapped[datetime] = mapped_column(server_default=NOW)
+    expires_at: Mapped[datetime]
+
+
 class SurveyResponse(Base):
     """Every submission is kept; answers are never overwritten (PLAN.md §7)."""
 
@@ -77,8 +104,11 @@ class UserSettings(Base):
     )
 
     user_id: Mapped[uuid.UUID] = user_fk(primary_key=True)
+    preset: Mapped[RankingPreset | None]
+    """The survey's ranking preset; ranking uses its current RANKING_PRESETS weights. Null is
+    reserved for V1's custom weights."""
     weights: Mapped[JSONObject]
-    """Ranking component weights (PLAN.md §6.6), from the chosen preset."""
+    """Ranking component weights (PLAN.md §6.6): the preset's when it was chosen."""
     exploration_pct: Mapped[float]
     exploration_split: Mapped[JSONObject]
     """Shares of exploration slots per slice (semantic vs. graph)."""

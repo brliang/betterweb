@@ -30,6 +30,10 @@ services:
   api:
     build: ./backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # For OPENROUTER_API_KEY (search) and auth settings; `environment` wins for DATABASE_URL.
+    env_file:
+      - path: ./backend/.env
+        required: false
     environment: *backend-env
     ports:
       - "8000:8000"

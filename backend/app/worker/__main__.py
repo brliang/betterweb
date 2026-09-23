@@ -5,6 +5,8 @@
   alerts. Needs OPENROUTER_API_KEY.
 - ``frontier seed URL [--feed FEED ...]``: enqueue a homepage as a pinned seed (for development;
   the API does this when a user pins a domain).
+- ``users login-link EMAIL``: print a one-time login link for EMAIL, creating the user if needed
+  (PLAN.md §8 auth; the link expires after LOGIN_TOKEN_TTL_MINUTES).
 - ``taxonomy seed``: load the adapted taxonomy into web.topics (idempotent).
 - ``taxonomy embed [--all]``: embed topics that lack an embedding from the configured model,
   then re-tag every embedded document if any topic changed.
@@ -14,9 +16,11 @@ import argparse
 import asyncio
 import logging
 import sys
+from datetime import UTC, datetime
 
 import sqlalchemy as sa
 
+from app.auth import create_login_link, ensure_user
 from app.crawl.cycle import CYCLE_LOCK_KEY, finish_cycle, start_or_resume_cycle
 from app.crawl.fetch_stage import run_fetch_stage
 from app.crawl.frontier import SeedError, add_seed
@@ -95,6 +99,22 @@ async def seed_frontier(settings: Settings, url: str, feeds: list[str]) -> None:
     logger.info("seeded %s (url %d) with %d feed(s)", url, url_id, len(feeds))
 
 
+async def login_link(settings: Settings, email: str) -> None:
+    engine = create_engine(settings)
+    try:
+        async with create_sessionmaker(engine)() as session, session.begin():
+            user_id = await ensure_user(session, email)
+            link = await create_login_link(session, user_id, settings, datetime.now(UTC))
+    finally:
+        await engine.dispose()
+    logger.info(
+        "login link for %s (valid %g minutes, once): %s",
+        email.strip().lower(),
+        settings.login_token_ttl_minutes,
+        link,
+    )
+
+
 async def seed_taxonomy(settings: Settings) -> None:
     topics = load_taxonomy()
     engine = create_engine(settings)
@@ -160,6 +180,11 @@ def main(argv: list[str] | None = None) -> int:
     seed.add_argument("url")
     seed.add_argument("--feed", action="append", default=[], help="a feed of the site")
 
+    users = commands.add_parser("users", help="user commands")
+    users_commands = users.add_subparsers(dest="action", required=True)
+    link = users_commands.add_parser("login-link", help="print a one-time login link")
+    link.add_argument("email")
+
     taxonomy = commands.add_parser("taxonomy", help="topic taxonomy commands")
     taxonomy_commands = taxonomy.add_subparsers(dest="action", required=True)
     taxonomy_commands.add_parser("seed", help="load the adapted taxonomy into web.topics")
@@ -173,6 +198,8 @@ def main(argv: list[str] | None = None) -> int:
                 asyncio.run(run_cycle(get_settings()))
             case ("frontier", "seed"):
                 asyncio.run(seed_frontier(get_settings(), args.url, args.feed))
+            case ("users", "login-link"):
+                asyncio.run(login_link(get_settings(), args.email))
             case ("taxonomy", "seed"):
                 asyncio.run(seed_taxonomy(get_settings()))
             case ("taxonomy", "embed"):

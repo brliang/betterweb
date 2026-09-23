@@ -1,6 +1,6 @@
 """The scoring stage of a crawl cycle (PLAN.md §6.1 step 5, §6.5).
 
-1. Load the document graph and every user's pins.
+1. Load the document graph and every user's pins (each covering its domain's `www.` twin).
 2. Solve personalized PageRank for the global surfer (seeded evenly across all users' pinned
    domains, each user weighted equally) and for each user (seeded from their own pins), in one
    power iteration. With no pins at all, the global surfer is plain PageRank.
@@ -25,8 +25,9 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crawl.frontier import recompute_priorities
-from app.db.usr import Pin, User, UserPpr
+from app.db.usr import User, UserPpr
 from app.db.web import CrawlCycle, DomainScore, GlobalScore
+from app.pins import pinned_domains
 from app.score.graph import load_graph
 from app.score.pagerank import (
     Graph,
@@ -95,7 +96,7 @@ class ScoreStage:
         graph = await load_graph(session)
         users = list(await session.scalars(sa.select(User.id).order_by(User.id)))
         pins: defaultdict[uuid.UUID, list[int]] = defaultdict(list)
-        for user_id, domain_id in await session.execute(sa.select(Pin.user_id, Pin.domain_id)):
+        for user_id, domain_id, _ in await session.execute(pinned_domains()):
             pins[user_id].append(domain_id)
 
         seeded: dict[uuid.UUID, Scores] = {}

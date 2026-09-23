@@ -40,12 +40,22 @@ class SpendPurpose(StrEnum):
 
     EMBED_DOCUMENTS = "embed_documents"
     EMBED_TOPICS = "embed_topics"
-    # M9 adds SUMMARY = "summary"; M8 adds SEARCH = "search".
+    SEARCH = "search"
+    """Embedding a search query (GET /search)."""
+    # M9 adds SUMMARY = "summary".
 
 
 class InterestSource(StrEnum):
     SURVEY = "survey"
     LEARNED = "learned"
+
+
+class InterestLevel(StrEnum):
+    """How strongly a user picked an interest in the survey (PLAN.md §7 step 1); stored as the
+    weight INTEREST_LEVEL_WEIGHTS gives it."""
+
+    INTERESTED = "interested"
+    VERY_INTERESTED = "very_interested"
 
 
 class PinSource(StrEnum):
@@ -89,3 +99,12 @@ class ProfileVectorKind(StrEnum):
     INTEREST = "interest"
     LIKED = "liked"
     HIDDEN = "hidden"
+
+
+class RankingPreset(StrEnum):
+    """Survey step 5 (PLAN.md §7); RANKING_PRESETS maps each to ranking weights."""
+
+    BALANCED = "balanced"
+    TRUST_MY_SOURCES = "trust_my_sources"
+    MATCH_MY_INTERESTS = "match_my_interests"
+    FRESH = "fresh"

@@ -1,6 +1,7 @@
 """Deleting a user is a single operation that removes every row of theirs (PLAN.md §4.2)."""
 
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 import sqlalchemy as sa
@@ -11,6 +12,7 @@ from app.db.base import USR
 from app.db.usr import (
     Event,
     Feedback,
+    LoginToken,
     Pin,
     Recommendation,
     Summary,
@@ -19,6 +21,7 @@ from app.db.usr import (
     UserInterest,
     UserPpr,
     UserProfileVector,
+    UserSession,
     UserSettings,
 )
 from app.db.web import CrawlCycle, Document, Domain, Topic, Url
@@ -37,6 +40,7 @@ from tests.fakes import unit_vector
 
 pytestmark = pytest.mark.anyio
 
+EXPIRES = datetime(2026, 10, 1, tzinfo=UTC)
 USR_TABLES = [table for table in models.Base.metadata.sorted_tables if table.schema == USR]
 
 
@@ -102,6 +106,8 @@ async def add_user_with_data(
                 user_id=user.id, kind=ProfileVectorKind.INTEREST, vector=unit_vector(email)
             ),
             Summary(user_id=user.id, document_id=document.id, model="fake", text="Because."),
+            LoginToken(token_hash=f"login-{email}", user_id=user.id, expires_at=EXPIRES),
+            UserSession(token_hash=f"session-{email}", user_id=user.id, expires_at=EXPIRES),
         ]
     )
     await session.flush()
