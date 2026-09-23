@@ -29,6 +29,13 @@ def test_cycle_run_refuses_the_placeholder_user_agent() -> None:
     assert main(["cycle", "run"]) == 1
 
 
+@pytest.mark.usefixtures("no_api_key")
+def test_cycle_run_needs_an_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("USER_AGENT", "bribot/0.1 (+https://bot.example/)")
+    get_settings.cache_clear()
+    assert main(["cycle", "run"]) == 1
+
+
 def test_seed_rejects_an_uncrawlable_url() -> None:
     assert main(["frontier", "seed", "mailto:someone@example.com"]) == 1
 

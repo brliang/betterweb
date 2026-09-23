@@ -6,6 +6,8 @@ import random
 from collections.abc import Sequence
 
 from app.db.base import EMBEDDING_DIMENSIONS, Embedding
+from app.providers.openrouter import ProviderError
+from app.providers.spend import Charge, SpendMeter
 
 
 def unit_vector(text: str, dimensions: int = EMBEDDING_DIMENSIONS) -> Embedding:
@@ -17,8 +19,20 @@ def unit_vector(text: str, dimensions: int = EMBEDDING_DIMENSIONS) -> Embedding:
 
 
 class FakeEmbeddings:
-    def __init__(self, model: str = "fake-embedding") -> None:
+    """Charges `usd_per_text` per text to `meter`, if given, like a real provider would; raises
+    `error` instead of answering while it is set."""
+
+    def __init__(
+        self,
+        model: str = "fake-embedding",
+        *,
+        meter: SpendMeter | None = None,
+        usd_per_text: float = 0.0,
+    ) -> None:
         self._model = model
+        self._meter = meter
+        self._usd_per_text = usd_per_text
+        self.error: ProviderError | None = None
         self.calls: list[list[str]] = []
 
     @property
@@ -30,7 +44,14 @@ class FakeEmbeddings:
         return EMBEDDING_DIMENSIONS
 
     async def embed_documents(self, texts: Sequence[str]) -> list[Embedding]:
+        cost = self._usd_per_text * len(texts)
+        if self._meter is not None:
+            self._meter.reserve(cost)
+        if self.error is not None:
+            raise self.error
         self.calls.append(list(texts))
+        if self._meter is not None:
+            self._meter.charge(Charge(self._model, len(texts), cost, estimated=False))
         return [unit_vector(text) for text in texts]
 
     async def embed_queries(self, texts: Sequence[str], instruction: str) -> list[Embedding]:

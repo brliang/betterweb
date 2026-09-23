@@ -140,7 +140,22 @@ class Settings(BaseSettings):
     embedding_model: str = "qwen/qwen3-embedding-8b"
     """Changing it means re-embedding everything; the vector size is fixed in the schema."""
     embedding_batch_size: int = Field(default=64, ge=1)
-    """Texts per embeddings request."""
+    """Texts per embeddings request; the embed stage commits one request's documents at a time."""
+    embedding_usd_per_mtok: float = Field(default=0.01, ge=0)
+    """The embedding model's price per million input tokens. Estimates each request before it
+    is sent (so the spend cap holds) and costs it when the provider reports no cost."""
+    provider_chars_per_token: float = Field(default=3.0, gt=0)
+    """Characters per token for those estimates; English averages about 4, so 3 overestimates."""
+    embed_text_max_chars: int = Field(default=2000, ge=0)
+    """Characters of document text embedded after its title and excerpt (about 512 tokens)."""
+    tag_max_topics: int = Field(default=3, ge=0)
+    """Most topics per document (PLAN.md §6.4)."""
+    tag_min_similarity: float = Field(default=0.2, ge=-1, le=1)
+    """Cosine similarity any topic needs to tag a document. Measured on Qwen3: the right topic
+    scores about 0.24-0.44, the median topic about 0.1."""
+    tag_max_gap: float = Field(default=0.05, ge=0)
+    """A topic tags a document only within this similarity of the document's best topic, which
+    keeps close runners-up and drops the stray matches an absolute threshold lets through."""
     search_query_instruction: str = (
         "Given a web search query, retrieve relevant web pages that answer the query"
     )

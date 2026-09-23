@@ -35,6 +35,9 @@ def test_defaults_match_plan() -> None:
     assert {"utm_*", "fbclid", "gclid", "ref", "mc_*"} <= set(s.tracking_params)
     assert s.user_agent.startswith("bribot/")
     assert s.dedup_min_confidence == 0.9
+    assert (s.embedding_batch_size, s.embed_text_max_chars) == (64, 2000)
+    assert (s.embedding_usd_per_mtok, s.provider_chars_per_token) == (0.01, 3.0)
+    assert (s.tag_max_topics, s.tag_min_similarity, s.tag_max_gap) == (3, 0.2, 0.05)
 
 
 def test_env_overrides(monkeypatch: pytest.MonkeyPatch) -> None:

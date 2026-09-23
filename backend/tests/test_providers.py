@@ -8,6 +8,7 @@ from pydantic import SecretStr
 from app.providers.embeddings import OpenRouterEmbeddings, fit
 from app.providers.llm import OpenRouterLLM
 from app.providers.openrouter import OpenRouterClient, ProviderError
+from app.providers.spend import Charge, SpendCapReached, SpendMeter
 from app.settings import Settings
 
 pytestmark = pytest.mark.anyio
@@ -22,6 +23,10 @@ def settings(**overrides: object) -> Settings:
         "embedding_batch_size": 2,
     }
     return Settings.model_validate({**values, **overrides})
+
+
+def meter(budget_usd: float = 1.0) -> SpendMeter:
+    return SpendMeter(budget_usd)
 
 
 def embedding_response(request: httpx2.Request, size: int = 4096) -> httpx2.Response:
@@ -55,7 +60,7 @@ async def test_embed_documents_batches_and_keeps_order() -> None:
         return embedding_response(request)
 
     async with OpenRouterClient(settings(), transport=Handler(handler)) as client:
-        provider = OpenRouterEmbeddings(client, settings(), dimensions=8)
+        provider = OpenRouterEmbeddings(client, settings(), meter(), dimensions=8)
         vectors = await provider.embed_documents(["a", "b", "c"])
 
     assert [json.loads(r.content)["input"] for r in requests] == [["a", "b"], ["c"]]
@@ -75,7 +80,7 @@ async def test_embed_queries_adds_the_instruction() -> None:
         return embedding_response(request)
 
     async with OpenRouterClient(settings(), transport=Handler(handler)) as client:
-        provider = OpenRouterEmbeddings(client, settings())
+        provider = OpenRouterEmbeddings(client, settings(), meter())
         await provider.embed_queries(["pagerank", "hits"], "Find pages")
 
     assert inputs == ["Instruct: Find pages\nQuery:pagerank", "Instruct: Find pages\nQuery:hits"]
@@ -89,7 +94,7 @@ async def test_retries_transient_failures() -> None:
         return embedding_response(request) if status == 200 else httpx2.Response(status)
 
     async with OpenRouterClient(settings(), transport=Handler(handler)) as client:
-        vectors = await OpenRouterEmbeddings(client, settings()).embed_documents(["a"])
+        vectors = await OpenRouterEmbeddings(client, settings(), meter()).embed_documents(["a"])
     assert len(vectors) == 1
 
 
@@ -103,7 +108,7 @@ async def test_gives_up_after_max_retries() -> None:
 
     async with OpenRouterClient(settings(provider_max_retries=2), transport=Handler(handler)) as c:
         with pytest.raises(ProviderError, match="503"):
-            await OpenRouterEmbeddings(c, settings()).embed_documents(["a"])
+            await OpenRouterEmbeddings(c, settings(), meter()).embed_documents(["a"])
     assert calls == 3
 
 
@@ -124,7 +129,7 @@ async def test_errors_are_not_retried(response: httpx2.Response) -> None:
 
     async with OpenRouterClient(settings(), transport=Handler(handler)) as client:
         with pytest.raises(ProviderError):
-            await OpenRouterEmbeddings(client, settings()).embed_documents(["a"])
+            await OpenRouterEmbeddings(client, settings(), meter()).embed_documents(["a"])
     assert calls == 1
 
 
@@ -134,7 +139,54 @@ async def test_rejects_short_vectors() -> None:
 
     async with OpenRouterClient(settings(), transport=Handler(handler)) as client:
         with pytest.raises(ProviderError, match="at least 1024"):
-            await OpenRouterEmbeddings(client, settings()).embed_documents(["a"])
+            await OpenRouterEmbeddings(client, settings(), meter()).embed_documents(["a"])
+
+
+@pytest.mark.parametrize(
+    ("usage", "expected"),
+    [
+        # Reported cost.
+        ({"prompt_tokens": 7, "cost": 0.5}, Charge("qwen/qwen3-embedding-8b", 7, 0.5, False)),
+        # Tokens but no cost: priced at EMBEDDING_USD_PER_MTOK.
+        ({"prompt_tokens": 7}, Charge("qwen/qwen3-embedding-8b", 7, 7e-6, True)),
+        # Nothing reported: 6 characters at 3 per token, priced.
+        (None, Charge("qwen/qwen3-embedding-8b", 2, 2e-6, True)),
+    ],
+)
+async def test_embeddings_are_charged(usage: dict[str, object] | None, expected: Charge) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        response = embedding_response(request)
+        body = json.loads(response.content)
+        body["usage"] = usage
+        return httpx2.Response(200, json=body)
+
+    spend = meter()
+    config = settings(embedding_usd_per_mtok=1.0, provider_chars_per_token=3)
+    async with OpenRouterClient(config, transport=Handler(handler)) as client:
+        await OpenRouterEmbeddings(client, config, spend).embed_documents(["abc", "def"])
+    assert spend.take() == [expected]
+    assert spend.spent_usd == pytest.approx(expected.cost_usd)
+    assert spend.take() == []
+
+
+async def test_embeddings_over_budget_are_never_sent() -> None:
+    calls = 0
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        nonlocal calls
+        calls += 1
+        return embedding_response(request)
+
+    # Two batches of 2 texts of 3 characters: 2 estimated tokens each, $2 at $1M per Mtok.
+    config = settings(embedding_usd_per_mtok=1_000_000, provider_chars_per_token=3)
+    spend = meter(budget_usd=3)
+    async with OpenRouterClient(config, transport=Handler(handler)) as client:
+        provider = OpenRouterEmbeddings(client, config, spend)
+        with pytest.raises(SpendCapReached, match="PROVIDER_MONTHLY_SPEND_CAP_USD"):
+            await provider.embed_documents(["abc", "def", "ghi", "jkl"])
+    # The first batch was sent and charged its reported (usage without cost: priced) tokens.
+    assert calls == 1
+    assert [charge.tokens for charge in spend.take()] == [3]
 
 
 def chat_response(content: str | None, finish_reason: str = "stop") -> httpx2.Response:

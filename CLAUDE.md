@@ -19,7 +19,9 @@ same checks.
 - Model providers (embeddings, LLM) sit behind the `EmbeddingProvider` / `LLMProvider`
   protocols in `app/providers/`, with fakes in `tests/fakes.py`; tests never call a real
   provider. Both use OpenRouter with one `OPENROUTER_API_KEY`. Never send user identifiers to a
-  provider.
+  provider. Every provider request goes through a `SpendMeter` (`app/providers/spend.py`),
+  which refuses it past `PROVIDER_MONTHLY_SPEND_CAP_USD`; record its charges with
+  `app.spend.record_spend` in the transaction that stores what they paid for.
 - Crawling (`app/crawl/`) is polite by construction: every request, polls and redirects
   included, goes through its domain's robots.txt check and `DomainGate`; never add a request
   path that skips them, and never follow redirects inline. Tests use `tests/fake_web.py`, never
@@ -116,3 +118,7 @@ same checks.
 - M4 (extract + classify + dedup): done. `cycle run` runs fetch then extract; the extract
   stage also follows links (so the crawl reaches one link level further per cycle) and
   dedups. The bot is named `bribot`; its contact page (§14 Q5) is still open.
+- M5 (embed + tag): done. `cycle run` now also runs the embed stage (needs
+  `OPENROUTER_API_KEY`); spend is metered against the monthly cap and logged in
+  `web.provider_spend`. Tagging keeps topics within `TAG_MAX_GAP` of a document's best one
+  above `TAG_MIN_SIMILARITY` (measured; see PLAN.md §6.4). LLM calls get metered in M9.

@@ -94,7 +94,7 @@ Use two Postgres schemas: `web` (shared graph) and `usr` (user store).
 - **`links`**
   - Fields: `src_document_id`, `dst_url_id`, `anchor_text`, `is_internal`.
   - Edges point to **URLs**, not Documents, because the destination may not be crawled yet. Resolve through `urls.document_id` when building the graph.
-- **`document_embeddings`**: `document_id`, `model`, `vector vector(N)`, `created_at`. Store the model name so a model change triggers re-embedding.
+- **`document_embeddings`**: `document_id`, `model`, `vector vector(N)`, `input_hash` (SHA-256 of the embedded text), `document_updated_at` (the document version last checked against it), `created_at`. Store the model name so a model change triggers re-embedding; a document keeps only its current model's row. HNSW index on `vector` (cosine).
 - **`topics`**
   - Fields: `id`, `external_id` (IAB ID), `name`, `parent_id`, `tier`, `description`, `embedding vector(N)`.
   - Holds the adapted taxonomy (§6.4).
@@ -108,6 +108,7 @@ Use two Postgres schemas: `web` (shared graph) and `usr` (user store).
   - Append-only log of every URL→Document merge, so strategies can be audited and tuned.
 - **`crawl_cycles`**
   - Fields: `id`, `started_at`, `finished_at`, `status`, `page_budget`, `pages_fetched`, `stats jsonb` (per-stage counts, errors, provider spend).
+- **`provider_spend`**: `id`, `created_at`, `cycle_id` (nullable), `purpose` (`embed_documents` | `embed_topics`; M8 and M9 add search and summaries), `model`, `requests`, `tokens`, `cost_usd`, `estimated`. Ledger of model provider spend, summed for the monthly cap. No user identifiers.
 - **`global_scores`**: `document_id`, `cycle_id`, `pagerank`. PageRank seeded with *all* users' pins; drives crawl priority.
 - **`domain_scores`**: `domain_id`, `cycle_id`, `score`. Used as the domain prior.
 - Reserved for V1: **`domain_metadata_overrides`**
@@ -161,7 +162,7 @@ All of these live in one Pydantic settings module and can be overridden via envi
 | `EXPLORATION_SPLIT` | 50/50 semantic/graph | |
 | `RECENCY_HALF_LIFE_DAYS` | 7 | Longer for evergreen types (paper, PDF) |
 | `MAX_PER_DOMAIN_PER_PAGE` | 2 | Diversity cap per 20 results |
-| `PROVIDER_MONTHLY_SPEND_CAP_USD` | 40 | Hard stop on embedding + LLM spend |
+| `PROVIDER_MONTHLY_SPEND_CAP_USD` | 40 | Hard stop on embedding + LLM spend, per calendar month (UTC) |
 | `USER_AGENT` | `bribot/0.1 (+https://<project-url>/bot)` | Contact page required |
 | `ROBOTS_TTL_H` | 24 | robots.txt refresh interval |
 | `RECRAWL_AFTER_H` | 20 | A fetched URL is due for re-crawl after this (under a day, so each nightly cycle sees it) |
@@ -173,6 +174,9 @@ All of these live in one Pydantic settings module and can be overridden via envi
 | `EXTRACT_MAX_TEXT_CHARS` / `EXTRACT_EXCERPT_CHARS` / `EXTRACT_FIELD_MAX_CHARS` | 200,000 / 300 / 500 | Stored text, excerpt, and title/author lengths (§6.3) |
 | `EXTRACT_MAX_LINKS_PER_PAGE` / `EXTRACT_ANCHOR_MAX_CHARS` / `PDF_MAX_PAGES` | 500 / 200 / 50 | Links kept per page, anchor text length, PDF pages read |
 | `DEDUP_MIN_CONFIDENCE` / `DEDUP_HASH_MIN_WORDS` | 0.9 / 50 | A strategy's match must reach this confidence; shorter texts never match by hash |
+| `EMBEDDING_BATCH_SIZE` / `EMBED_TEXT_MAX_CHARS` | 64 / 2,000 | Documents per embeddings request (and per commit); text embedded after title and excerpt (~512 tokens) |
+| `EMBEDDING_USD_PER_MTOK` / `PROVIDER_CHARS_PER_TOKEN` | 0.01 / 3 | Price and a conservative token estimate, to check each request against the cap before sending it |
+| `TAG_MAX_TOPICS` / `TAG_MIN_SIMILARITY` / `TAG_MAX_GAP` | 3 / 0.2 / 0.05 | Topics per document: at most 3, above the floor, and within the gap of the document's best topic (§6.4) |
 
 ---
 
@@ -199,6 +203,9 @@ A **crawl cycle** is one nightly batch run with a fixed page budget, recorded in
    - Steps 2 and 3 run as one pass (`app.ingest.stage`), one transaction per raw page: the page's document, links, frontier candidates and dedup decisions are written and its raw page deleted together, so a killed stage resumes with the pages still waiting. CPU-bound extraction runs in a worker thread.
    - This pass also **follows links**: a page's links are enqueued one step further from its frontier position (§6.2). Links are followed only when a page is new or changed, and a URL they add is fetched in the next cycle, so the crawl reaches one link level deeper per cycle; feeds and sitemaps (depth 0) are found every cycle.
 4. **Embed + Tag**: embed new or changed documents, then assign topics (§6.4).
+   - Runs in document-id order, one embeddings request per transaction (vectors, tags and spend together), so a killed stage resumes with the documents still waiting.
+   - A document is a candidate when it has no embedding from the configured model or was updated since its embedding was checked; if its embedding input is unchanged it costs no request.
+   - When the monthly cap is reached, or the provider fails after its retries, the stage stops and the cycle goes on; the remaining documents wait for the next cycle.
 5. **Scores**: compute global PageRank, domain scores and per-user PPR, then refresh user profile vectors (§6.5).
 
 Use Postgres as the work queue rather than adding a queue service.
@@ -295,14 +302,17 @@ priority(url) = Σ_{p ∈ known parents} global_pr(p) / outdegree(p)  +  λ · d
 
 - **`EmbeddingProvider` interface**: `embed_documents(texts) -> list[vector]` and `embed_queries(texts, instruction) -> list[vector]` (Qwen3 prefixes the query side with a task instruction; documents are embedded as-is, once), plus model name and dimension.
   - V0 implementation: `qwen/qwen3-embedding-8b` via OpenRouter, one API key shared with the LLM. OpenRouter doesn't pass a `dimensions` parameter through, so vectors are truncated to 1024 dims client-side and L2-normalized (the model is Matryoshka-trained). Open weights mean a later self-hosted implementation produces the same vectors without re-embedding.
-  - Embed `title + excerpt + first ~512 tokens`, in batches.
+  - Embed `title + excerpt + first ~512 tokens` (`EMBED_TEXT_MAX_CHARS`, cut at a word boundary), in batches. The excerpt is left out when it is just the start of the text.
   - Track spend per cycle and stop embedding when `PROVIDER_MONTHLY_SPEND_CAP_USD` is reached. Un-embedded docs carry over to the next cycle.
+  - **Spend metering**: every provider request goes through a `SpendMeter` holding what is left of the month's cap (calendar month, UTC). The request is estimated first (characters ÷ `PROVIDER_CHARS_PER_TOKEN` × price) and refused if it doesn't fit; afterwards it is charged the cost OpenRouter reports, else its tokens × the configured price. Charges go to `provider_spend` in the same transaction as the results, and each cycle's total to `crawl_cycles.stats`. Topic embedding is metered too; LLM calls get metered in M9.
 - **Taxonomy**: adapt the **IAB Tech Lab Content Taxonomy** (latest version).
   1. Load tiers 1–2 into `topics` via a versioned seed script.
   2. IAB categories lack descriptions, so generate a one-sentence description per topic once with an LLM, commit it to the repo as a data file, and embed `name + description`.
   3. Prune ad-centric categories that make no sense for discovery. Keep the pruning list in the repo.
   4. **Before shipping, verify the taxonomy's license permits use in an open-source project.**
 - **Tagging**: assign topics by cosine similarity between the document embedding and the topic embeddings. Keep the top 3 above a threshold (configurable). This is zero-shot and needs no training data.
+  - As built (M5): at most `TAG_MAX_TOPICS`, each at or above `TAG_MIN_SIMILARITY` (0.2) **and** within `TAG_MAX_GAP` (0.05) of the document's best topic. Measured on the 7 saved test pages plus 15 one-topic article snippets: the right topic scored 0.24–0.44, the median topic about 0.1, and stray topics reached 0.29 ("Sports > Darts" for the PageRank article), so no absolute threshold alone separates them. The best topic was right or defensible for 19 of 22. The misses were the JPEG XL post ("Augmented Reality" ahead of "Programming"), a medicine story (weight loss or crime ahead of "Medical Health") and a climate story (space or disasters ahead of "Environment"); better topic descriptions are the lever if this matters.
+  - Runs in Postgres (an exact scan over the few hundred topic vectors). `taxonomy embed` re-tags every document when topic vectors change.
   - Topics are embedded as *queries* with a category instruction (`TOPIC_EMBEDDING_INSTRUCTION`); documents stay plain passages. Measured in M2 on 18 hand-labeled article snippets: top-1 accuracy 17/18, versus 12/18 when both sides were embedded plainly (Entertainment topics then matched almost everything).
 
 ### 6.5 Scoring stage
@@ -461,11 +471,11 @@ Complete each milestone with tests passing before starting the next.
 | M2 | **Taxonomy + suggested sources** | IAB seed loaded and pruned; descriptions data file; topic embeddings; license check noted in README; suggested-sources file with verified feeds |
 | M3 | **Fetcher + frontier** | robots.txt, politeness, conditional GET and backoff; feed and sitemap polling; depth-limit logic with unit tests for min-path merging; OPIC priority; budget and time-limit stop; resumable after kill |
 | M4 | **Extract + classify + dedup** | Classifier and extractor registries; the V0 types; rel=canonical/og:url handling (URL canonicalization and its test table landed in M3); dedup strategy pipeline plus decision log; fixtures of real saved pages for tests (`backend/tests/fixtures/pages`, redistributable pages with their licenses) |
-| M5 | **Embed + tag** | `EmbeddingProvider` with an OpenRouter implementation plus a fake for tests; batching; spend tracking and cap; topic tagging |
+| M5 | **Embed + tag** | `EmbeddingProvider` with an OpenRouter implementation plus a fake for tests; batching; spend tracking and cap; topic tagging; HNSW index on document embeddings |
 | M6 | **Graph scoring** | Sparse graph build; global PR; domain scores; per-user PPR; profile vectors; tests against a small hand-computed graph |
 | M7 | **Ranking + API** | §6.6 scoring, filters, candidates, exploration slices, diversity cap; recommendations persisted with components; §8 endpoints; explanation generation; tests for composition ratios and filters |
 | M8 | **Frontend** | Survey, feed, search, settings, admin/metrics; generated client only; impression logging; optional like-reason prompt |
-| M9 | **Summaries (opt-in)** | `LLMProvider` with an OpenRouter implementation plus a fake; 403 when not opted in; caching; spend counted; privacy copy in settings |
+| M9 | **Summaries (opt-in)** | `LLMProvider` with an OpenRouter implementation plus a fake; 403 when not opted in; caching; spend counted (the LLM provider goes through the `SpendMeter`, with LLM price settings); privacy copy in settings |
 | M10 | **Orchestration + deploy** | `cycle run` CLI running all stages with per-stage re-run flags; systemd timer at the user's local time; deploy docs; backups; failure alert; one full cycle run end-to-end on the real VM |
 
 **V0 non-goals:** social features, publisher tools, manual domain submission, weight sliders, near-duplicate detection, multiple real users, local models.

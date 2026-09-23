@@ -14,6 +14,7 @@ The full design and milestone list is in [docs/PLAN.md](docs/PLAN.md).
 | `backend/app/db/` | SQLAlchemy models for the `web` (shared graph) and `usr` (user store) schemas |
 | `backend/app/crawl/` | The crawler: URL canonicalization, robots.txt, the frontier, polite fetching |
 | `backend/app/ingest/` | Extraction: document types, text and metadata, links, dedup |
+| `backend/app/embed/` | The embed stage: document embeddings and topic tags |
 | `backend/tests/fixtures/pages/` | Real saved pages (redistributable) that the extraction tests run on |
 | `backend/migrations/` | Alembic migrations, including the DB roles that keep the schemas apart |
 | `backend/app/providers/` | Embedding and LLM providers (OpenRouter), behind interfaces |
@@ -45,13 +46,14 @@ make dev-web        # Vite on :5173, proxying /api -> :8000
 docker compose up   # Postgres (pgvector), migrations, API, frontend
 ```
 
-The worker CLI runs the nightly crawl cycle (so far, the fetch and extract stages) and
+The worker CLI runs the nightly crawl cycle (so far, the fetch, extract and embed stages) and
 development tasks:
 
 ```sh
 cd backend
 uv run python -m app.worker frontier seed https://example.com/ --feed https://example.com/feed.xml
 uv run python -m app.worker cycle run    # run, or resume after a kill, the crawl cycle
+uv run python -m app.worker taxonomy embed   # embed changed topics and re-tag every document
 docker compose run --rm worker cycle run
 ```
 
@@ -77,7 +79,10 @@ variable of the same upper-case name (see `.env.example`).
 
 Embeddings (Qwen3-Embedding-8B, 1024 dimensions) and LLM calls go through
 [OpenRouter](https://openrouter.ai) with one `OPENROUTER_API_KEY`. Set a monthly credit limit
-on the key in OpenRouter as well; the app's own cap is `PROVIDER_MONTHLY_SPEND_CAP_USD`.
+on the key in OpenRouter as well; the app's own cap is `PROVIDER_MONTHLY_SPEND_CAP_USD`
+(per calendar month, UTC). Every embeddings request is estimated before it is sent and refused
+if it would pass the cap; what each one cost is kept in `web.provider_spend`. When the cap is
+reached, the embed stage stops and the remaining documents wait for next month's budget.
 
 ## Topic taxonomy
 

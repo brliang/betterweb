@@ -41,6 +41,7 @@ def test_every_vector_column_has_the_embedding_size(conn: Connection) -> None:
     rows = conn.execute(
         text(
             "SELECT attrelid::regclass::text || '.' || attname, atttypmod FROM pg_attribute "
+            "JOIN pg_class ON pg_class.oid = attrelid AND pg_class.relkind = 'r' "
             "WHERE atttypid = 'vector'::regtype AND attnum > 0 AND NOT attisdropped"
         )
     )

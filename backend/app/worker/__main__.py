@@ -1,12 +1,13 @@
 """Worker CLI: ``python -m app.worker <command>``.
 
 - ``cycle run``: run (or resume) the nightly crawl cycle (PLAN.md §6.1). Stages so far: fetch
-  (M3), then extract + dedup (M4); embed and scores land in M5-M6, and M10 adds scheduling
-  and alerts.
+  (M3), extract + dedup (M4), then embed + tag (M5); scores land in M6, and M10 adds
+  scheduling and alerts. Needs OPENROUTER_API_KEY.
 - ``frontier seed URL [--feed FEED ...]``: enqueue a homepage as a pinned seed (for development;
   the API does this when a user pins a domain).
 - ``taxonomy seed``: load the adapted taxonomy into web.topics (idempotent).
-- ``taxonomy embed [--all]``: embed topics that lack an embedding from the configured model.
+- ``taxonomy embed [--all]``: embed topics that lack an embedding from the configured model,
+  then re-tag every embedded document if any topic changed.
 """
 
 import argparse
@@ -21,10 +22,14 @@ from app.crawl.fetch_stage import run_fetch_stage
 from app.crawl.frontier import SeedError, add_seed
 from app.crawl.http import create_client
 from app.db.session import create_engine, create_sessionmaker
+from app.embed.stage import run_embed_stage
+from app.embed.tagging import tag_documents
+from app.enums import SpendPurpose
 from app.ingest.stage import run_extract_stage
 from app.providers.embeddings import OpenRouterEmbeddings
 from app.providers.openrouter import OpenRouterClient, ProviderError
 from app.settings import Settings, get_settings
+from app.spend import open_meter, record_spend
 from app.taxonomy import (
     TaxonomyError,
     embed_topics,
@@ -49,17 +54,28 @@ async def run_cycle(settings: Settings) -> None:
             "USER_AGENT still points at the placeholder contact URL; set it to a real bot "
             "contact page before crawling"
         )
+    key = settings.openrouter_api_key
+    if key is None or not key.get_secret_value():
+        raise WorkerError("OPENROUTER_API_KEY is not set; the embed stage needs it")
     engine = create_engine(settings)
     try:
         async with engine.connect() as lock:
             if not await lock.scalar(sa.select(sa.func.pg_try_advisory_lock(CYCLE_LOCK_KEY))):
                 raise WorkerError("another crawl cycle is already running")
-            async with create_sessionmaker(engine)() as session, create_client(settings) as client:
+            async with (
+                OpenRouterClient(settings) as provider_client,
+                create_sessionmaker(engine)() as session,
+                create_client(settings) as client,
+            ):
                 cycle = await start_or_resume_cycle(session, settings)
                 logger.info("crawl cycle %d: fetch stage", cycle.id)
                 await run_fetch_stage(session, cycle, client, settings)
                 logger.info("crawl cycle %d: extract stage", cycle.id)
                 await run_extract_stage(session, cycle, settings)
+                logger.info("crawl cycle %d: embed stage", cycle.id)
+                meter = await open_meter(session, settings)
+                provider = OpenRouterEmbeddings(provider_client, settings, meter)
+                await run_embed_stage(session, cycle, provider, meter, settings)
                 await finish_cycle(session, cycle)
                 logger.info("crawl cycle %d finished", cycle.id)
     finally:
@@ -95,21 +111,36 @@ async def seed_taxonomy(settings: Settings) -> None:
 
 async def embed_taxonomy(settings: Settings, *, redo_all: bool) -> None:
     engine = create_engine(settings)
+    sessionmaker = create_sessionmaker(engine)
     try:
-        async with (
-            OpenRouterClient(settings) as client,
-            create_sessionmaker(engine)() as session,
-            session.begin(),
-        ):
-            count = await embed_topics(
-                session,
-                OpenRouterEmbeddings(client, settings),
-                settings.topic_embedding_instruction,
-                redo_all=redo_all,
-            )
+        async with OpenRouterClient(settings) as client, sessionmaker() as session:
+            meter = await open_meter(session, settings)
+            try:
+                count = await embed_topics(
+                    session,
+                    OpenRouterEmbeddings(client, settings, meter),
+                    settings.topic_embedding_instruction,
+                    redo_all=redo_all,
+                )
+            except ProviderError:
+                # The vectors are lost, but what the requests before the failure cost is kept.
+                await session.rollback()
+                await record_spend(session, meter, SpendPurpose.EMBED_TOPICS)
+                await session.commit()
+                raise
+            spent = await record_spend(session, meter, SpendPurpose.EMBED_TOPICS)
+            # New topic vectors change every document's nearest topics.
+            tags = await tag_documents(session, settings.embedding_model, settings) if count else 0
+            await session.commit()
     finally:
         await engine.dispose()
-    logger.info("embedded %d topics with %s", count, settings.embedding_model)
+    logger.info(
+        "embedded %d topics with %s ($%.6f); %d document tags rewritten",
+        count,
+        settings.embedding_model,
+        spent,
+        tags,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:

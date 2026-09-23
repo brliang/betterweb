@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import WEB, Base, Embedding, JSONObject
-from app.enums import CycleStatus, DocumentType, DomainStatus, FrontierReason
+from app.enums import CycleStatus, DocumentType, DomainStatus, FrontierReason, SpendPurpose
 
 NOW = sa.func.now()
 EMPTY_JSON = sa.text("'{}'::jsonb")
@@ -111,8 +111,19 @@ class Link(Base):
 
 
 class DocumentEmbedding(Base):
+    """A document's embedding (PLAN.md §6.4). A document keeps only its current model's row."""
+
     __tablename__ = "document_embeddings"
-    __table_args__ = ({"schema": WEB},)
+    __table_args__ = (
+        # Approximate nearest-neighbour search by cosine distance (search, adjacent candidates).
+        sa.Index(
+            "ix_document_embeddings_vector",
+            "vector",
+            postgresql_using="hnsw",
+            postgresql_ops={"vector": "vector_cosine_ops"},
+        ),
+        {"schema": WEB},
+    )
 
     document_id: Mapped[int] = mapped_column(
         sa.ForeignKey(Document.id, ondelete="CASCADE"), primary_key=True
@@ -120,7 +131,13 @@ class DocumentEmbedding(Base):
     model: Mapped[str] = mapped_column(primary_key=True)
     """Stored so that changing the model triggers re-embedding."""
     vector: Mapped[Embedding]
+    input_hash: Mapped[str]
+    """SHA-256 of the embedded text, so an edit elsewhere in the document costs no request."""
+    document_updated_at: Mapped[datetime]
+    """The document's `updated_at` when this row was last checked against it; a document
+    updated since is a candidate for re-embedding."""
     created_at: Mapped[datetime] = mapped_column(server_default=NOW)
+    """When the vector was written."""
 
 
 class Topic(Base):
@@ -211,6 +228,28 @@ class CrawlCycle(Base):
     pages_fetched: Mapped[int] = mapped_column(server_default="0")
     stats: Mapped[JSONObject] = mapped_column(server_default=EMPTY_JSON)
     """Per-stage counts, timings, errors and provider spend."""
+
+
+class ProviderSpend(Base):
+    """What model provider requests cost (PLAN.md §6.4): the monthly spend cap sums this
+    month's rows. Holds no user identifiers, like everything in `web`."""
+
+    __tablename__ = "provider_spend"
+    __table_args__ = ({"schema": WEB},)
+
+    id: Mapped[int] = mapped_column(sa.BigInteger, sa.Identity(), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(server_default=NOW, index=True)
+    cycle_id: Mapped[int | None] = mapped_column(
+        sa.ForeignKey(CrawlCycle.id, ondelete="SET NULL"), index=True
+    )
+    """The crawl cycle that spent it, if any."""
+    purpose: Mapped[SpendPurpose]
+    model: Mapped[str]
+    requests: Mapped[int]
+    tokens: Mapped[int] = mapped_column(sa.BigInteger)
+    cost_usd: Mapped[float]
+    estimated: Mapped[bool]
+    """The provider reported no cost, so it was computed from the configured price."""
 
 
 class RawPage(Base):

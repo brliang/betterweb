@@ -35,6 +35,14 @@ class CycleStatus(StrEnum):
     FAILED = "failed"
 
 
+class SpendPurpose(StrEnum):
+    """What a model provider was paid for (web.provider_spend)."""
+
+    EMBED_DOCUMENTS = "embed_documents"
+    EMBED_TOPICS = "embed_topics"
+    # M9 adds SUMMARY = "summary"; M8 adds SEARCH = "search".
+
+
 class InterestSource(StrEnum):
     SURVEY = "survey"
     LEARNED = "learned"

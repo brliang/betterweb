@@ -1,6 +1,5 @@
 """Embedding providers (PLAN.md §6.4). Callers depend on `EmbeddingProvider`, never on a vendor."""
 
-import logging
 import math
 from collections.abc import Sequence
 from itertools import batched
@@ -10,9 +9,8 @@ from pydantic import BaseModel
 
 from app.db.base import EMBEDDING_DIMENSIONS, Embedding
 from app.providers.openrouter import OpenRouterClient, ProviderError, Usage
+from app.providers.spend import Charge, SpendMeter, estimate_tokens, price
 from app.settings import Settings
-
-logger = logging.getLogger(__name__)
 
 
 class EmbeddingProvider(Protocol):
@@ -62,19 +60,24 @@ class OpenRouterEmbeddings:
     """Embeddings through OpenRouter's /embeddings endpoint.
 
     OpenRouter doesn't pass a `dimensions` parameter through to Qwen3, so full-size vectors come
-    back and are truncated here with `fit`.
+    back and are truncated here with `fit`. Every request goes through `meter`, which refuses
+    it when its estimated cost doesn't fit in the month's remaining budget.
     """
 
     def __init__(
         self,
         client: OpenRouterClient,
         settings: Settings,
+        meter: SpendMeter,
         *,
         dimensions: int = EMBEDDING_DIMENSIONS,
     ) -> None:
         self._client = client
+        self._meter = meter
         self._model = settings.embedding_model
         self._batch_size = settings.embedding_batch_size
+        self._usd_per_mtok = settings.embedding_usd_per_mtok
+        self._chars_per_token = settings.provider_chars_per_token
         self._dimensions = dimensions
 
     @property
@@ -97,14 +100,22 @@ class OpenRouterEmbeddings:
         )
 
     async def _embed(self, texts: Sequence[str]) -> list[Embedding]:
+        estimate = estimate_tokens(texts, self._chars_per_token)
+        self._meter.reserve(price(estimate, self._usd_per_mtok))
         response = await self._client.post(
             "/embeddings",
             {"model": self._model, "input": list(texts), "encoding_format": "float"},
             _EmbeddingResponse,
         )
+        self._meter.charge(self._charge(response.usage, estimate))
         if sorted(item.index for item in response.data) != list(range(len(texts))):
             raise ProviderError(f"expected {len(texts)} embeddings, got {len(response.data)}")
-        if response.usage is not None:
-            logger.debug("embedded %d texts: %s", len(texts), response.usage)
         ordered = sorted(response.data, key=lambda item: item.index)
         return [fit(item.embedding, self._dimensions) for item in ordered]
+
+    def _charge(self, usage: Usage | None, estimate: int) -> Charge:
+        """The request's cost as reported, else priced from its tokens (reported or estimated)."""
+        if usage is not None and usage.cost is not None:
+            return Charge(self._model, usage.prompt_tokens, usage.cost, estimated=False)
+        tokens = usage.prompt_tokens if usage is not None and usage.prompt_tokens else estimate
+        return Charge(self._model, tokens, price(tokens, self._usd_per_mtok), estimated=True)
