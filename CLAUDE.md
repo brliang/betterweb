@@ -7,7 +7,7 @@ tests passing before the next. Don't build V1/V2 features, but honor every "Rese
 `make check` (all format/lint/type/test), `make format`, `make codegen`, `make migrate`,
 `make migration name="..."`, `make taxonomy`, `make verify-sources`, `make dev-api`,
 `make dev-web`, `docker compose up -d`. Backend commands run via `uv run` from `backend/`;
-frontend via `npm run` from `frontend/`. Run `make check` before every commit; CI runs the
+frontend via `npm run` from `frontend/` (`npm test` runs Vitest). Run `make check` before every commit; CI runs the
 same checks.
 
 ## Project rules
@@ -82,6 +82,14 @@ same checks.
   generated `get…QueryKey()` helpers; never hand-write query keys for API data.
 - Keep server state in TanStack Query and UI state in local `useState`; no global store unless
   a real need appears.
+- The feed and search are infinite queries (`use…Infinite`, set in `orval.config.ts`). Every
+  page is ranked and stored as served when fetched, so they use `pagedResults`
+  (`src/lib/paging.ts`): never refetched behind the user's back, never invalidated after
+  feedback (remove the card locally instead). Starting over is an explicit reset.
+- Impressions and clicks go through `eventQueue` (`src/events/`), not a mutation hook: they
+  are batched and must survive the page closing.
+- Tests: Vitest + Testing Library in jsdom (`*.test.ts(x)` next to the code). Stub the API
+  with `mockApi` from `src/test/api.ts`; query elements by role and accessible name.
 - API errors arrive as `ApiError` (`src/api/fetcher.ts`) with `status` and `body`; handle
   `isPending` / `isError` explicitly in every component that queries.
 - TypeScript is strict with `noUncheckedIndexedAccess`. No `any`, no non-null `!`, no `as`
@@ -99,7 +107,7 @@ same checks.
 
 ## Git / CI
 - Small commits, imperative subject lines, one milestone or fix per PR.
-- CI must be green: backend (ruff, mypy, pytest), frontend (prettier, eslint, tsc, build),
+- CI must be green: backend (ruff, mypy, pytest), frontend (prettier, eslint, tsc, vitest, build),
   stale-codegen check, and the backend Docker build.
 - Dependabot opens grouped weekly dependency PRs; let CI pass before merging.
 
@@ -131,3 +139,7 @@ same checks.
   a one-time login link from `app.worker users login-link` plus a session cookie. The API tests
   run as `discovery_api`. The summaries route is M9's. Pins cover their domain's `www.` twin
   (`app.pins`). Before deploying, the crawler must refuse private addresses (PLAN.md §14 Q6).
+- M8 (frontend): done. React Router pages in `frontend/src/pages/`: login, survey (until done),
+  feed, search, settings, admin. Frontend tests run with Vitest (`make check` includes them).
+  The summaries button comes with M9 (the settings page already has the opt-in and its
+  privacy copy).

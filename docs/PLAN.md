@@ -498,6 +498,18 @@ React + Vite + TypeScript, using only the generated orval client and hooks.
   - hide rate
   - exploration-slice click-through vs. main
 
+**As built (M8, `frontend/src/`):**
+- **Routing** (React Router): `/login`, `/survey`, `/` (feed), `/search?q=`, `/settings`, `/admin`. A signed-out visitor sees how to get a login link. Until the survey is done, every page leads to it. `/login` signs in when you press the button, not on load, so a link previewer can't use up the one-time token. Any 401 sends the app back to the signed-out page.
+- **Feed and search** are infinite queries over the cursor (orval generates `useFeedInfinite` / `useSearchInfinite`). The API ranks and stores each page when it is fetched, so a page is never refetched on focus, reconnect or remount, and feedback never re-ranks the list: a hidden card collapses in place, and blocking a site drops its cards. "Start over" begins a new feed session. Changing settings or pins also does, on the next visit.
+- **Cards**: title (opens in a new tab, `noreferrer`), domain, type badge, date, author, excerpt, reason chips, an exploration label, and Like / Hide / Block site (confirmed inline; there is no unblock yet) / Why this?. The "why" panel loads `/why` when opened: reasons, a table of every component (inputs, value, weight, contribution, score), then the evidence.
+- **Like-reason prompt**: after a like, an inline optional "What did you like about it?"; Skip (or Escape) saves nothing, Save sends `PATCH /feedback/{id}`.
+- **Impressions**: an item counts as seen once it has been at least half on screen for a second (one shared IntersectionObserver). Impressions are logged once per recommendation. Events are batched (up to 50, or after 5 s). Clicks, including middle-clicks, are sent at once with `keepalive`. Pending events are flushed when the tab is hidden or closed. A batch the server rejects (4xx) is dropped; one that fails to send is retried with the next.
+- **Survey**: five steps with Back/Next, starting from `GET /settings` defaults. Interests are tier-1 topics that expand to tier 2, with a search box. Suggested sources matching the chosen interests come first.
+- **Settings**: pins (add/unpin), interests, content types, exploration share, preset, and the summaries opt-in with its privacy copy (the summary button itself is M9).
+- **Admin**: totals (discoveries, hide rate, documents, month spend against the cap), discoveries per day (chart plus table), exploration vs. main click-through, corpus by type, frontier counts, and crawl cycles with their per-stage stats.
+- **Retries**: queries retry network failures and 5xx, except 503. The API sends 503 when search has no key or the spend cap is reached, so retrying can't help.
+- **Tests**: Vitest + Testing Library in jsdom. They cover the event queue, the impression timing, the survey flow and its payload, cards (like prompt, hide, block, why, click logging), feed paging, and the session and survey gates.
+
 ---
 
 ## 10. Deployment and budget (V0)

@@ -16,6 +16,13 @@ export default defineConfig({
         // Return the response body directly and throw ApiError on non-2xx (see fetcher.ts).
         mutator: { path: './src/api/fetcher.ts', name: 'apiFetch' },
         fetch: { includeHttpResponseReturnType: false },
+        // The feed and search page with a cursor: generate infinite queries for them too.
+        operations: {
+          feed: { query: { useQuery: false, useInfinite: true, useInfiniteQueryParam: 'cursor' } },
+          search: {
+            query: { useQuery: false, useInfinite: true, useInfiniteQueryParam: 'cursor' },
+          },
+        },
       },
     },
   },

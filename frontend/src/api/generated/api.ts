@@ -5,18 +5,23 @@
  * OpenAPI spec version: 0.1.0
  */
 import {
+  useInfiniteQuery,
   useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
+  DefinedUseInfiniteQueryResult,
   DefinedUseQueryResult,
+  InfiniteData,
   MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseInfiniteQueryOptions,
+  UseInfiniteQueryResult,
   UseMutationOptions,
   UseMutationResult,
   UseQueryOptions,
@@ -960,71 +965,71 @@ export const feed = async (params?: FeedParams, options?: Parameters<typeof apiF
 
 
 
-export const getFeedQueryKey = (params?: FeedParams,) => {
+export const getFeedInfiniteQueryKey = (params?: FeedParams,) => {
     return [
-    `/api/feed`, ...(params ? [params] : [])
+    'infinite', `/api/feed`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getFeedQueryOptions = <TData = Awaited<ReturnType<typeof feed>>, TError = ErrorType<HTTPValidationError>>(params?: FeedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getFeedInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof feed>>, FeedParams['cursor']>, TError = ErrorType<HTTPValidationError>>(params?: FeedParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData, QueryKey, FeedParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getFeedQueryKey(params);
+  const queryKey =  queryOptions?.queryKey ?? getFeedInfiniteQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof feed>>> = ({ signal }) => feed(params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof feed>>, QueryKey, FeedParams['cursor']> = ({ signal, pageParam }) => feed({...params, 'cursor': pageParam ?? params?.['cursor']}, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData, QueryKey, FeedParams['cursor']> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type FeedQueryResult = NonNullable<Awaited<ReturnType<typeof feed>>>
-export type FeedQueryError = ErrorType<HTTPValidationError>
+export type FeedInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof feed>>>
+export type FeedInfiniteQueryError = ErrorType<HTTPValidationError>
 
 
-export function useFeed<TData = Awaited<ReturnType<typeof feed>>, TError = ErrorType<HTTPValidationError>>(
- params: undefined |  FeedParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData>> & Pick<
+export function useFeedInfinite<TData = InfiniteData<Awaited<ReturnType<typeof feed>>, FeedParams['cursor']>, TError = ErrorType<HTTPValidationError>>(
+ params: undefined |  FeedParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData, QueryKey, FeedParams['cursor']>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof feed>>,
           TError,
-          Awaited<ReturnType<typeof feed>>
+          Awaited<ReturnType<typeof feed>>, QueryKey
         > , 'initialData'
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useFeed<TData = Awaited<ReturnType<typeof feed>>, TError = ErrorType<HTTPValidationError>>(
- params?: FeedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData>> & Pick<
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useFeedInfinite<TData = InfiniteData<Awaited<ReturnType<typeof feed>>, FeedParams['cursor']>, TError = ErrorType<HTTPValidationError>>(
+ params?: FeedParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData, QueryKey, FeedParams['cursor']>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof feed>>,
           TError,
-          Awaited<ReturnType<typeof feed>>
+          Awaited<ReturnType<typeof feed>>, QueryKey
         > , 'initialData'
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useFeed<TData = Awaited<ReturnType<typeof feed>>, TError = ErrorType<HTTPValidationError>>(
- params?: FeedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useFeedInfinite<TData = InfiniteData<Awaited<ReturnType<typeof feed>>, FeedParams['cursor']>, TError = ErrorType<HTTPValidationError>>(
+ params?: FeedParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData, QueryKey, FeedParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
  * @summary Feed
  */
 
-export function useFeed<TData = Awaited<ReturnType<typeof feed>>, TError = ErrorType<HTTPValidationError>>(
- params?: FeedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export function useFeedInfinite<TData = InfiniteData<Awaited<ReturnType<typeof feed>>, FeedParams['cursor']>, TError = ErrorType<HTTPValidationError>>(
+ params?: FeedParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof feed>>, TError, TData, QueryKey, FeedParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getFeedQueryOptions(params,options)
+  const queryOptions = getFeedInfiniteQueryOptions(params,options)
 
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
   return withQueryKey(query, queryOptions.queryKey);
 }
@@ -1820,71 +1825,71 @@ export const search = async (params: SearchParams, options?: Parameters<typeof a
 
 
 
-export const getSearchQueryKey = (params?: SearchParams,) => {
+export const getSearchInfiniteQueryKey = (params?: SearchParams,) => {
     return [
-    `/api/search`, ...(params ? [params] : [])
+    'infinite', `/api/search`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getSearchQueryOptions = <TData = Awaited<ReturnType<typeof search>>, TError = ErrorType<HTTPValidationError>>(params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getSearchInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof search>>, SearchParams['cursor']>, TError = ErrorType<HTTPValidationError>>(params: SearchParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData, QueryKey, SearchParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getSearchQueryKey(params);
+  const queryKey =  queryOptions?.queryKey ?? getSearchInfiniteQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof search>>> = ({ signal }) => search(params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof search>>, QueryKey, SearchParams['cursor']> = ({ signal, pageParam }) => search({...params, 'cursor': pageParam ?? params?.['cursor']}, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData, QueryKey, SearchParams['cursor']> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type SearchQueryResult = NonNullable<Awaited<ReturnType<typeof search>>>
-export type SearchQueryError = ErrorType<HTTPValidationError>
+export type SearchInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof search>>>
+export type SearchInfiniteQueryError = ErrorType<HTTPValidationError>
 
 
-export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = ErrorType<HTTPValidationError>>(
- params: SearchParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>> & Pick<
+export function useSearchInfinite<TData = InfiniteData<Awaited<ReturnType<typeof search>>, SearchParams['cursor']>, TError = ErrorType<HTTPValidationError>>(
+ params: SearchParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData, QueryKey, SearchParams['cursor']>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof search>>,
           TError,
-          Awaited<ReturnType<typeof search>>
+          Awaited<ReturnType<typeof search>>, QueryKey
         > , 'initialData'
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = ErrorType<HTTPValidationError>>(
- params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>> & Pick<
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSearchInfinite<TData = InfiniteData<Awaited<ReturnType<typeof search>>, SearchParams['cursor']>, TError = ErrorType<HTTPValidationError>>(
+ params: SearchParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData, QueryKey, SearchParams['cursor']>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof search>>,
           TError,
-          Awaited<ReturnType<typeof search>>
+          Awaited<ReturnType<typeof search>>, QueryKey
         > , 'initialData'
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = ErrorType<HTTPValidationError>>(
- params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSearchInfinite<TData = InfiniteData<Awaited<ReturnType<typeof search>>, SearchParams['cursor']>, TError = ErrorType<HTTPValidationError>>(
+ params: SearchParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData, QueryKey, SearchParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
  * @summary Search
  */
 
-export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = ErrorType<HTTPValidationError>>(
- params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export function useSearchInfinite<TData = InfiniteData<Awaited<ReturnType<typeof search>>, SearchParams['cursor']>, TError = ErrorType<HTTPValidationError>>(
+ params: SearchParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData, QueryKey, SearchParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getSearchQueryOptions(params,options)
+  const queryOptions = getSearchInfiniteQueryOptions(params,options)
 
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
   return withQueryKey(query, queryOptions.queryKey);
 }

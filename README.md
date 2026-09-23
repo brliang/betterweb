@@ -23,7 +23,9 @@ The full design and milestone list is in [docs/PLAN.md](docs/PLAN.md).
 | `backend/app/providers/` | Embedding and LLM providers (OpenRouter), behind interfaces |
 | `backend/data/taxonomy/` | The vendored IAB taxonomy, our adaptation of it, and topic descriptions |
 | `backend/data/suggested_sources.toml` | Curated sites offered at signup, with verified feeds |
-| `frontend/` | React 19 · TypeScript · Vite · TanStack Query · Tailwind CSS v4 |
+| `frontend/` | React 19 · TypeScript · Vite · TanStack Query · React Router · Tailwind CSS v4 |
+| `frontend/src/pages/`, `components/` | The survey, feed, search, settings and admin screens |
+| `frontend/src/events/` | Impression and click logging, batched to `POST /events` |
 | `openapi.json` | Exported API schema (generated, committed) |
 | `frontend/src/api/generated/` | Typed client + hooks from orval (generated, committed) |
 
@@ -41,7 +43,7 @@ make migrate        # apply migrations to DATABASE_URL
 make migration name="add foo"   # autogenerate the next migration from model changes
 make taxonomy       # load topics into the DB and embed them (needs OPENROUTER_API_KEY)
 make verify-sources # check suggested sources' robots.txt and feeds
-make check          # ruff, mypy, pytest, prettier, eslint, tsc
+make check          # ruff, mypy, pytest, prettier, eslint, tsc, vitest
 make format         # auto-fix formatting (ruff, prettier)
 make codegen        # re-export openapi.json and regenerate the TS client
 make dev-api        # FastAPI on :8000
@@ -64,7 +66,12 @@ docker compose run --rm worker cycle run
 There is one account per email and no sign-up page: `users login-link` prints a one-time link
 to the frontend's `/login` page, which exchanges it for a session cookie. For plain-http local
 development set `SESSION_COOKIE_SECURE=false`; put your email in `ADMIN_EMAILS` to see
-`/admin`.
+`/admin`. Set `APP_BASE_URL` to where the frontend runs (default `http://localhost:5173`).
+The login page signs in on a button press rather than on load, so a link previewer can't
+use up the one-time link.
+
+In development, React's StrictMode mounts each component twice, so every page load asks for
+the feed (and each "why this?") twice and the API stores both. Production builds don't.
 
 The crawler identifies itself as `bribot`. `cycle run` refuses to crawl until `USER_AGENT` names
 a real contact page for it (docs/PLAN.md §14 Q5): sites need a way to reach whoever runs the

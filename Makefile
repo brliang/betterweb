@@ -49,9 +49,10 @@ typecheck:
 	cd backend && uv run mypy
 	cd frontend && npm run typecheck
 
-# Tests in backend/tests/db need Postgres: `docker compose up -d db`.
+# Tests in backend/tests/db need Postgres: `docker compose up -d db`. Frontend tests run in jsdom.
 test:
 	cd backend && uv run pytest
+	cd frontend && npm test
 
 check: lint typecheck test
 
