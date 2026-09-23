@@ -42,7 +42,8 @@ class SpendPurpose(StrEnum):
     EMBED_TOPICS = "embed_topics"
     SEARCH = "search"
     """Embedding a search query (GET /search)."""
-    # M9 adds SUMMARY = "summary".
+    SUMMARY = "summary"
+    """An opt-in "Why might I like this?" summary (POST /documents/{id}/summary)."""
 
 
 class InterestSource(StrEnum):

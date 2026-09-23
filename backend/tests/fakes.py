@@ -59,14 +59,36 @@ class FakeEmbeddings:
 
 
 class FakeLLM:
-    def __init__(self, reply: str = "A description.") -> None:
+    """Replies `reply` to every prompt, charging `usd_per_call` to `meter`, if given, like a
+    real provider would; raises `error` instead of answering while it is set."""
+
+    def __init__(
+        self,
+        reply: str = "A description.",
+        *,
+        model: str = "fake-llm",
+        meter: SpendMeter | None = None,
+        usd_per_call: float = 0.0,
+    ) -> None:
         self._reply = reply
+        self._model = model
+        self._meter = meter
+        self._usd_per_call = usd_per_call
+        self.error: ProviderError | None = None
+        self.systems: list[str] = []
         self.prompts: list[str] = []
 
     @property
     def model(self) -> str:
-        return "fake-llm"
+        return self._model
 
     async def complete(self, *, system: str, prompt: str, max_tokens: int) -> str:
+        if self._meter is not None:
+            self._meter.reserve(self._usd_per_call)
+        if self.error is not None:
+            raise self.error
+        self.systems.append(system)
         self.prompts.append(prompt)
+        if self._meter is not None:
+            self._meter.charge(Charge(self._model, 1, self._usd_per_call, estimated=False))
         return self._reply

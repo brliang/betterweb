@@ -1,13 +1,12 @@
 """LLM providers (PLAN.md §6.8). Callers depend on `LLMProvider`, never on a vendor."""
 
-import logging
 from typing import Protocol
 
 from pydantic import BaseModel
 
 from app.providers.openrouter import OpenRouterClient, ProviderError, Usage
-
-logger = logging.getLogger(__name__)
+from app.providers.spend import Charge, SpendMeter, estimate_tokens, price
+from app.settings import Settings
 
 
 class LLMProvider(Protocol):
@@ -34,15 +33,31 @@ class _ChatResponse(BaseModel):
 
 
 class OpenRouterLLM:
-    def __init__(self, client: OpenRouterClient, model: str) -> None:
+    """Chat completions through OpenRouter.
+
+    Every request goes through `meter`, which refuses it when its estimated cost (the prompt,
+    plus `max_tokens` of reply) doesn't fit in the budget. A reply that turns out unusable is
+    still charged: it was paid for.
+    """
+
+    def __init__(
+        self, client: OpenRouterClient, settings: Settings, meter: SpendMeter, model: str
+    ) -> None:
         self._client = client
+        self._meter = meter
         self._model = model
+        self._prices = settings.llm_prices[model]
+        self._chars_per_token = settings.provider_chars_per_token
 
     @property
     def model(self) -> str:
         return self._model
 
     async def complete(self, *, system: str, prompt: str, max_tokens: int) -> str:
+        estimate = estimate_tokens([system, prompt], self._chars_per_token)
+        self._meter.reserve(
+            price(estimate, self._prices.input) + price(max_tokens, self._prices.output)
+        )
         response = await self._client.post(
             "/chat/completions",
             {
@@ -55,12 +70,23 @@ class OpenRouterLLM:
             },
             _ChatResponse,
         )
+        self._meter.charge(self._charge(response.usage, estimate, max_tokens))
         choice = response.choices[0] if response.choices else None
         text = choice.message.content if choice is not None else None
         if choice is None or not text:
             raise ProviderError(f"{self._model} returned no text")
         if choice.finish_reason == "length":
             raise ProviderError(f"{self._model} hit max_tokens={max_tokens}")
-        if response.usage is not None:
-            logger.debug("%s: %s", self._model, response.usage)
         return text.strip()
+
+    def _charge(self, usage: Usage | None, estimate: int, max_tokens: int) -> Charge:
+        """The request's cost as reported, else priced from its tokens (reported, or the
+        estimate and a full reply)."""
+        if usage is not None and usage.cost is not None:
+            return Charge(self._model, usage.total_tokens, usage.cost, estimated=False)
+        if usage is not None and usage.total_tokens:
+            prompt, reply = usage.prompt_tokens, usage.completion_tokens
+        else:
+            prompt, reply = estimate, max_tokens
+        cost = price(prompt, self._prices.input) + price(reply, self._prices.output)
+        return Charge(self._model, prompt + reply, cost, estimated=True)

@@ -108,7 +108,7 @@ Use two Postgres schemas: `web` (shared graph) and `usr` (user store).
   - Append-only log of every URL→Document merge, so strategies can be audited and tuned.
 - **`crawl_cycles`**
   - Fields: `id`, `started_at`, `finished_at`, `status`, `page_budget`, `pages_fetched`, `stats jsonb` (per-stage counts, errors, provider spend).
-- **`provider_spend`**: `id`, `created_at`, `cycle_id` (nullable), `purpose` (`embed_documents` | `embed_topics` | `search`; M9 adds summaries), `model`, `requests`, `tokens`, `cost_usd`, `estimated`. Ledger of model provider spend, summed for the monthly cap. No user identifiers.
+- **`provider_spend`**: `id`, `created_at`, `cycle_id` (nullable), `purpose` (`embed_documents` | `embed_topics` | `search` | `summary`), `model`, `requests`, `tokens`, `cost_usd`, `estimated`. Ledger of model provider spend, summed for the monthly cap. No user identifiers.
 - **`global_scores`**: `document_id`, `cycle_id`, `pagerank`. PageRank seeded with *all* users' pins; drives crawl priority. Only documents with a positive score have a row.
 - **`domain_scores`**: `domain_id`, `cycle_id`, `score`. Used as the domain prior: the mean `pagerank` of the domain's documents (§6.5).
 - Reserved for V1: **`domain_metadata_overrides`**
@@ -320,7 +320,7 @@ priority(url) = Σ_{p ∈ known parents} global_pr(p) / outdegree(p)  +  λ · d
   - V0 implementation: `qwen/qwen3-embedding-8b` via OpenRouter, one API key shared with the LLM. OpenRouter doesn't pass a `dimensions` parameter through, so vectors are truncated to 1024 dims client-side and L2-normalized (the model is Matryoshka-trained). Open weights mean a later self-hosted implementation produces the same vectors without re-embedding.
   - Embed `title + excerpt + first ~512 tokens` (`EMBED_TEXT_MAX_CHARS`, cut at a word boundary), in batches. The excerpt is left out when it is just the start of the text.
   - Track spend per cycle and stop embedding when `PROVIDER_MONTHLY_SPEND_CAP_USD` is reached. Un-embedded docs carry over to the next cycle.
-  - **Spend metering**: every provider request goes through a `SpendMeter` holding what is left of the month's cap (calendar month, UTC). The request is estimated first (characters ÷ `PROVIDER_CHARS_PER_TOKEN` × price) and refused if it doesn't fit; afterwards it is charged the cost OpenRouter reports, else its tokens × the configured price. Charges go to `provider_spend` in the same transaction as the results, and each cycle's total to `crawl_cycles.stats`. Topic embedding is metered too; LLM calls get metered in M9.
+  - **Spend metering**: every provider request goes through a `SpendMeter` holding what is left of the month's cap (calendar month, UTC). The request is estimated first (characters ÷ `PROVIDER_CHARS_PER_TOKEN` × price) and refused if it doesn't fit; afterwards it is charged the cost OpenRouter reports, else its tokens × the configured price. Charges go to `provider_spend` in the same transaction as the results, and each cycle's total to `crawl_cycles.stats`. Topic embedding is metered too, and so are LLM calls (M9): estimated as the prompt plus a full `max_tokens` reply at the model's `LLM_PRICES`.
 - **Taxonomy**: adapt the **IAB Tech Lab Content Taxonomy** (latest version).
   1. Load tiers 1–2 into `topics` via a versioned seed script.
   2. IAB categories lack descriptions, so generate a one-sentence description per topic once with an LLM, commit it to the repo as a data file, and embed `name + description`.
@@ -425,6 +425,14 @@ Render the top 2–3 contributing components as plain-language reasons, derived 
 - **Prompt input**: title, excerpt, top topics and the user's interest tag names. Output: 1–2 sentences.
 - **Caching and cost**: cache results in `summaries`, and count spend against the provider cap.
 
+**As built (M9, `app.summaries`, `POST /documents/{id}/summary`):**
+- **Request**: the body names the `recommendation_id` it is asked on. It must be the user's and must have served that document (404 otherwise), and each answer logs a `summary_view` event. The route returns 403 unless the user opted in, even for a cached summary. It returns 503 without a key or at the spend cap, and 502 when the provider fails.
+- **Prompt**: title, site, the document's topic tags (as `Parent > Child`), its excerpt, and up to `SUMMARY_TEXT_MAX_CHARS` of its text. It also has the user's interest names (at most `SUMMARY_MAX_INTERESTS`), those the document falls under first. The system prompt asks for one or two sentences (at most 50 words) addressed to "you", using only what the page says, and treats the page as data, not instructions. There is never a user identifier. A reply that runs past `SUMMARY_MAX_TOKENS` is an error, not a cut-off summary.
+- **Model and cost**: `SUMMARY_MODEL` defaults to `anthropic/claude-sonnet-5`. Every chat model needs a price in `LLM_PRICES`, which settings validation checks. `OpenRouterLLM` goes through the `SpendMeter`: it reserves the prompt estimate plus a full reply, then charges the cost OpenRouter reports, else priced tokens. A failed reply is still charged. Spend is recorded as `summary`. Measured on 2026-09-23: about $0.0018 per summary (~600 tokens), with OpenRouter reporting the cost.
+- **Cache**: one row per user, document and model; a new model writes new summaries. Two simultaneous requests both write, and the later one is kept.
+- **Topic descriptions** (`scripts.describe_topics`) are metered too. They run on a developer's machine and are committed, so they get their own `TAXONOMY_DESCRIPTION_BUDGET_USD` instead of a deployment's ledger.
+- **Frontend**: when the settings say opted in, each card offers "Why might I like this?". Opening it the first time writes the summary; reopening it doesn't ask again. The panel labels it as written by AI (naming the model) and says it can be wrong.
+
 ---
 
 ## 7. Signup survey (version 1)
@@ -472,7 +480,7 @@ All routes are user-scoped and use Pydantic request/response models, so the Open
 **As built (M7, `app.api`):**
 - **Auth**: magic links without email. `python -m app.worker users login-link EMAIL` creates the user if needed and prints a one-time link to the frontend's `/login` page (valid `LOGIN_TOKEN_TTL_MINUTES`), which trades it for an HttpOnly, SameSite=Lax session cookie (`POST /auth/session`); `POST /auth/logout`, `GET /me`. Only token hashes are stored. Admin routes need an email in `ADMIN_EMAILS`.
 - **Added routes**: `PATCH /feedback/{id}` (the like-reason prompt comes after the like), and the auth routes above. `/taxonomy` and `/suggested-sources` need no session; every other route is scoped to the signed-in user.
-- **`POST /documents/{id}/summary`** comes with M9, which owns summaries.
+- **`POST /documents/{id}/summary`** (M9): see §6.8 "As built".
 - **Pins** accept a domain or any URL on the site; they enqueue its homepage (and the URL, and a suggested source's feed) as seeds. A pin covers its domain's `www.` twin (`app.pins`), for scoring too, since "example.com" usually redirects to "www.example.com".
 - **The survey** is stored as submitted and replaces the interests, pins and settings; the settings page (`PUT /settings`) edits interests, content types, exploration share, preset and the summaries opt-in. Both, and likes and hides, rebuild the user's profile vectors right away, not only at the next cycle.
 - **Events**: `POST /events` takes impressions and clicks; `/feedback` logs likes and hides, `/why` logs `why_open`. References are checked: a recommendation must be the user's and have served that document.
@@ -505,7 +513,7 @@ React + Vite + TypeScript, using only the generated orval client and hooks.
 - **Like-reason prompt**: after a like, an inline optional "What did you like about it?"; Skip (or Escape) saves nothing, Save sends `PATCH /feedback/{id}`.
 - **Impressions**: an item counts as seen once it has been at least half on screen for a second (one shared IntersectionObserver). Impressions are logged once per recommendation. Events are batched (up to 50, or after 5 s). Clicks, including middle-clicks, are sent at once with `keepalive`. Pending events are flushed when the tab is hidden or closed. A batch the server rejects (4xx) is dropped; one that fails to send is retried with the next.
 - **Survey**: five steps with Back/Next, starting from `GET /settings` defaults. Interests are tier-1 topics that expand to tier 2, with a search box. Suggested sources matching the chosen interests come first.
-- **Settings**: pins (add/unpin), interests, content types, exploration share, preset, and the summaries opt-in with its privacy copy (the summary button itself is M9).
+- **Settings**: pins (add/unpin), interests, content types, exploration share, preset, and the summaries opt-in with its privacy copy.
 - **Admin**: totals (discoveries, hide rate, documents, month spend against the cap), discoveries per day (chart plus table), exploration vs. main click-through, corpus by type, frontier counts, and crawl cycles with their per-stage stats.
 - **Retries**: queries retry network failures and 5xx, except 503. The API sends 503 when search has no key or the spend cap is reached, so retrying can't help.
 - **Tests**: Vitest + Testing Library in jsdom. They cover the event queue, the impression timing, the survey flow and its payload, cards (like prompt, hide, block, why, click logging), feed paging, and the session and survey gates.
@@ -599,6 +607,6 @@ The V0 design already reserves the hooks each item uses.
 1. Default `MAX_EXTERNAL_HOPS`: 1 vs. 2. Decide from V0 measurements.
 2. IAB taxonomy license terms for an open-source project.
 3. ~~Which hosted embedding model~~ **Resolved 2026-09-23:** Qwen3-Embedding-8B via OpenRouter at $0.01/1M tokens, 1024 dims. Worst case at 20k pages/night × ~700 tokens is ~420M tokens ≈ $4/month, well under the cap.
-4. Whether interest tag names sent to OpenRouter are acceptable under the project's privacy promise, or should be omitted from summary prompts.
+4. Whether interest tag names sent to OpenRouter are acceptable under the project's privacy promise, or should be omitted from summary prompts. **As built (M9):** they are sent, only for users who opted in, as the settings copy says. Pinned sites, likes and account details are not.
 5. Project name and the bot contact page (required before the first real crawl). **Bot name resolved 2026-09-23:** `bribot`. The worker refuses to run a cycle while `USER_AGENT` points at the `example.invalid` placeholder contact URL.
 6. **Before deploying (M10):** the crawler fetches any http(s) URL it finds, including private and loopback addresses (`10.x`, `127.0.0.1`, `169.254.169.254`), so a link on a crawled page could make it request services on the VM. It needs to refuse non-public addresses (after DNS resolution, and on every redirect) behind a setting that local end-to-end checks can turn off.

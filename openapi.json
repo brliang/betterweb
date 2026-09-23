@@ -1087,6 +1087,48 @@
         "title": "SuggestedSourceOut",
         "type": "object"
       },
+      "SummaryIn": {
+        "properties": {
+          "recommendation_id": {
+            "title": "Recommendation Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "recommendation_id"
+        ],
+        "title": "SummaryIn",
+        "type": "object"
+      },
+      "SummaryOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "text",
+          "model",
+          "created_at"
+        ],
+        "title": "SummaryOut",
+        "type": "object"
+      },
       "Surface": {
         "enum": [
           "feed",
@@ -1590,6 +1632,59 @@
         "summary": "Sign In",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/documents/{document_id}/summary": {
+      "post": {
+        "description": "A short AI-written note on why the user might like the document: cached, else written\nnow. Only for users who opted in (403 otherwise). Logs a `summary_view` event.",
+        "operationId": "summarize",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SummaryIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Summarize",
+        "tags": [
+          "summaries"
         ]
       }
     },

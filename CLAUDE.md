@@ -129,7 +129,7 @@ same checks.
 - M5 (embed + tag): done. `cycle run` now also runs the embed stage (needs
   `OPENROUTER_API_KEY`); spend is metered against the monthly cap and logged in
   `web.provider_spend`. Tagging keeps topics within `TAG_MAX_GAP` of a document's best one
-  above `TAG_MIN_SIMILARITY` (measured; see PLAN.md §6.4). LLM calls get metered in M9.
+  above `TAG_MIN_SIMILARITY` (measured; see PLAN.md §6.4).
 - M6 (graph scoring): done. `cycle run` ends with the scoring stage (`app/score/`): one power
   iteration solves the global and every user's personalized PageRank (numpy/scipy), then
   global/domain scores, `user_ppr`, frontier priorities and profile vectors are replaced in one
@@ -137,9 +137,10 @@ same checks.
 - M7 (ranking + API): done. `app/rank/` ranks each feed or search page when requested and stores
   every served item's breakdown in `usr.recommendations` (reasons are derived from it). Auth is
   a one-time login link from `app.worker users login-link` plus a session cookie. The API tests
-  run as `discovery_api`. The summaries route is M9's. Pins cover their domain's `www.` twin
-  (`app.pins`). Before deploying, the crawler must refuse private addresses (PLAN.md §14 Q6).
+  run as `discovery_api`. Pins cover their domain's `www.` twin (`app.pins`). Before deploying, the crawler must refuse private addresses (PLAN.md §14 Q6).
 - M8 (frontend): done. React Router pages in `frontend/src/pages/`: login, survey (until done),
   feed, search, settings, admin. Frontend tests run with Vitest (`make check` includes them).
-  The summaries button comes with M9 (the settings page already has the opt-in and its
-  privacy copy).
+- M9 (summaries): done. `POST /documents/{id}/summary` (`app.summaries`) writes a cached,
+  metered "Why might I like this?" note for opted-in users (403 otherwise). LLM calls go
+  through the `SpendMeter` like embeddings; every chat model needs a price in `LLM_PRICES`.
+  The card button shows only when the settings say opted in.

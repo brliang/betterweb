@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.enums import RankingPreset
-from app.settings import Settings
+from app.settings import Settings, TokenPrices
 
 
 def test_defaults_match_plan() -> None:
@@ -77,3 +77,15 @@ def test_every_preset_and_interest_level_needs_weights() -> None:
     partial = {RankingPreset.BALANCED: defaults.ranking_presets[RankingPreset.BALANCED]}
     with pytest.raises(ValidationError, match="no weights for"):
         Settings(_env_file=None, ranking_presets=partial)
+
+
+def test_every_chat_model_needs_a_price(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SUMMARY_MODEL", "some/other-model")
+    with pytest.raises(ValidationError, match="no LLM_PRICES for"):
+        Settings(_env_file=None)
+    monkeypatch.setenv(
+        "LLM_PRICES",
+        '{"some/other-model": {"input": 1, "output": 2},'
+        ' "anthropic/claude-sonnet-5": {"input": 2, "output": 10}}',
+    )
+    assert Settings(_env_file=None).llm_prices["some/other-model"] == TokenPrices(input=1, output=2)

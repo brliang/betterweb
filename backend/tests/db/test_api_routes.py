@@ -9,15 +9,17 @@ from urllib.parse import parse_qs, urlsplit
 import httpx2
 import pytest
 import sqlalchemy as sa
+from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_now, get_query_embedder, get_session
+from app.api.deps import get_now, get_query_embedder, get_session, get_summarizer
 from app.auth import create_login_link, ensure_user
 from app.db.usr import (
     Event,
     Feedback,
     Pin,
     Recommendation,
+    Summary,
     SurveyResponse,
     UserInterest,
     UserProfileVector,
@@ -27,10 +29,13 @@ from app.db.web import CrawlCycle, Domain, FrontierEntry, ProviderSpend, Topic, 
 from app.enums import EventKind, PinSource, ProfileVectorKind, RankingPreset, SpendPurpose
 from app.main import create_app
 from app.preferences import suggested_sources
+from app.providers.openrouter import ProviderError
+from app.providers.spend import SpendMeter
 from app.search import QueryEmbedder
 from app.settings import Settings, get_settings
+from app.summaries import Summarizer
 from tests.db.builders import MODEL, add_document, add_topic, direction, link, set_ppr
-from tests.fakes import FakeEmbeddings, unit_vector
+from tests.fakes import FakeEmbeddings, FakeLLM, unit_vector
 
 pytestmark = pytest.mark.anyio
 
@@ -44,6 +49,8 @@ SETTINGS = Settings(
     provider_monthly_spend_cap_usd=1.0,
 )
 SEARCH_COST = 0.25
+SUMMARY_COST = 0.125
+SUMMARY = "You follow AI, and this page is about AI."
 
 Client = httpx2.AsyncClient
 SignIn = Callable[[str | None], Awaitable[Client]]
@@ -65,7 +72,9 @@ async def sign_in(session: AsyncSession) -> AsyncIterator[SignIn]:
     app.dependency_overrides[get_settings] = lambda: SETTINGS
     app.dependency_overrides[get_now] = lambda: NOW
     app.dependency_overrides[get_query_embedder] = lambda: embedder
+    app.dependency_overrides[get_summarizer] = lambda: Summarizer(SETTINGS, fake_llm)
     clients: list[Client] = []
+    LLM_CALLS.clear()
 
     async def client(email: str | None) -> Client:
         http = Client(transport=httpx2.ASGITransport(app=app), base_url="https://testserver")
@@ -81,6 +90,23 @@ async def sign_in(session: AsyncSession) -> AsyncIterator[SignIn]:
     yield client
     for http in clients:
         await http.aclose()
+
+
+LLM_CALLS: list[FakeLLM] = []
+"""Every FakeLLM `fake_llm` made; cleared by the sign_in fixture."""
+
+
+def fake_llm(meter: SpendMeter) -> FakeLLM:
+    llm = FakeLLM(
+        f'  "{SUMMARY}"\n', model=SETTINGS.summary_model, meter=meter, usd_per_call=SUMMARY_COST
+    )
+    LLM_CALLS.append(llm)
+    return llm
+
+
+def app_of(client: Client) -> FastAPI:
+    app: FastAPI = client._transport.app  # type: ignore[attr-defined]  # the ASGI app under test
+    return app
 
 
 async def user_id_of(session: AsyncSession, email: str) -> uuid.UUID:
@@ -146,6 +172,7 @@ async def test_expired_links_and_sessions_are_refused(
         ("POST", "/feedback"),
         ("POST", "/events"),
         ("GET", "/recommendations/1/why"),
+        ("POST", "/documents/1/summary"),
         ("GET", "/admin/metrics"),
     ],
 )
@@ -473,10 +500,141 @@ async def test_search_stops_at_the_spend_cap(session: AsyncSession, sign_in: Sig
 
 async def test_search_without_a_provider(sign_in: SignIn) -> None:
     client = await sign_in("reader@example.com")
-    app = client._transport.app  # type: ignore[attr-defined]  # the ASGI app under test
-    app.dependency_overrides[get_query_embedder] = lambda: None
+    app_of(client).dependency_overrides[get_query_embedder] = lambda: None
     response = await client.get("/search", params={"q": "trains"})
     assert response.status_code == 503
+
+
+# Summaries
+
+
+async def opt_in(client: Client, topics: dict[str, int]) -> None:
+    update = {
+        "preset": "balanced",
+        "exploration_pct": SETTINGS.exploration_pct,
+        "content_types": ["article"],
+        "summaries_opt_in": True,
+        "interests": [{"topic_id": topics["ai"], "level": "very_interested"}],
+    }
+    assert (await client.put("/settings", json=update)).status_code == 200
+
+
+def summary_request(document_id: int, recommendation_id: int) -> tuple[str, dict[str, object]]:
+    return f"/documents/{document_id}/summary", {"recommendation_id": recommendation_id}
+
+
+async def count(session: AsyncSession, model: type[object]) -> int:
+    return await session.scalar(sa.select(sa.func.count()).select_from(model)) or 0
+
+
+async def test_summaries_need_the_opt_in(
+    session: AsyncSession, sign_in: SignIn, corpus: dict[str, int]
+) -> None:
+    client = await sign_in("reader@example.com")
+    [item, *_] = (await client.get("/feed")).json()["items"]
+    path, body = summary_request(item["document"]["id"], item["recommendation_id"])
+    response = await client.post(path, json=body)
+    assert response.status_code == 403
+    assert "settings" in response.json()["detail"]
+    assert LLM_CALLS == []
+    assert await count(session, ProviderSpend) == 0
+
+
+async def test_a_summary_is_written_once_and_counted(
+    session: AsyncSession, sign_in: SignIn, topics: dict[str, int], corpus: dict[str, int]
+) -> None:
+    client = await sign_in("reader@example.com")
+    await opt_in(client, topics)
+    [item, other, *_] = (await client.get("/feed")).json()["items"]
+    path, body = summary_request(item["document"]["id"], item["recommendation_id"])
+
+    response = await client.post(path, json=body)
+    assert response.status_code == 200, response.text
+    summary = response.json()
+    assert summary["text"] == SUMMARY
+    assert summary["model"] == SETTINGS.summary_model
+    assert summary["document_id"] == item["document"]["id"]
+    [llm] = LLM_CALLS
+    [prompt] = llm.prompts
+    assert item["document"]["title"] in prompt
+    assert "Topics: Technology > AI" in prompt
+    assert prompt.endswith("Their interests: Technology > AI")
+    user_id = await user_id_of(session, "reader@example.com")
+    assert "reader@example.com" not in prompt
+    assert str(user_id) not in prompt
+    spend = (
+        (await session.execute(sa.select(ProviderSpend.purpose, ProviderSpend.cost_usd)))
+        .tuples()
+        .all()
+    )
+    assert spend == [(SpendPurpose.SUMMARY, SUMMARY_COST)]
+
+    # Asked again: the cached one, without another request.
+    again = await client.post(path, json=body)
+    assert again.json() == summary
+    assert len(LLM_CALLS) == 1
+    assert await count(session, ProviderSpend) == 1
+    views = (
+        await session.execute(
+            sa.select(Event.recommendation_id, Event.surface).where(
+                Event.kind == EventKind.SUMMARY_VIEW
+            )
+        )
+    ).tuples()
+    assert list(views) == [(item["recommendation_id"], "feed")] * 2
+
+    # References are checked: the item must be the user's, and have served that document.
+    mismatched = {"recommendation_id": other["recommendation_id"]}
+    assert (await client.post(path, json=mismatched)).status_code == 404
+    stranger = await sign_in("stranger@example.com")
+    await opt_in(stranger, topics)
+    assert (await stranger.post(path, json=body)).status_code == 404
+    assert await count(session, Summary) == 1
+
+
+async def test_summaries_stop_at_the_spend_cap(
+    session: AsyncSession, sign_in: SignIn, topics: dict[str, int], corpus: dict[str, int]
+) -> None:
+    client = await sign_in("reader@example.com")
+    await opt_in(client, topics)
+    items = (await client.get("/feed")).json()["items"]
+    session.add(
+        ProviderSpend(
+            purpose=SpendPurpose.SEARCH,
+            model=MODEL,
+            requests=1,
+            tokens=1,
+            cost_usd=SETTINGS.provider_monthly_spend_cap_usd - SUMMARY_COST / 2,
+            estimated=False,
+            created_at=NOW,
+        )
+    )
+    path, body = summary_request(items[0]["document"]["id"], items[0]["recommendation_id"])
+    capped = await client.post(path, json=body)
+    assert capped.status_code == 503
+    assert "spend cap" in capped.json()["detail"]
+    assert await count(session, Summary) == 0
+
+
+async def test_summary_failures(
+    session: AsyncSession, sign_in: SignIn, topics: dict[str, int], corpus: dict[str, int]
+) -> None:
+    client = await sign_in("reader@example.com")
+    await opt_in(client, topics)
+    [item, *_] = (await client.get("/feed")).json()["items"]
+    path, body = summary_request(item["document"]["id"], item["recommendation_id"])
+
+    def failing(meter: SpendMeter) -> FakeLLM:
+        llm = fake_llm(meter)
+        llm.error = ProviderError("upstream failed")
+        return llm
+
+    overrides = app_of(client).dependency_overrides
+    overrides[get_summarizer] = lambda: Summarizer(SETTINGS, failing)
+    assert (await client.post(path, json=body)).status_code == 502
+    overrides[get_summarizer] = lambda: None
+    assert (await client.post(path, json=body)).status_code == 503
+    assert await count(session, Summary) == 0
 
 
 # Feedback and events

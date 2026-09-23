@@ -5,11 +5,13 @@ import { ErrorNotice } from '../components/ErrorNotice'
 import { Loading } from '../components/Loading'
 import { ResultList } from '../components/ResultList'
 import { pagedResults } from '../lib/paging'
+import { useSummariesOn } from '../lib/summaries'
 import { link, secondaryButton } from '../lib/styles'
 
 export function FeedPage() {
   const queryClient = useQueryClient()
   const feed = useFeedInfinite(undefined, { query: pagedResults })
+  const summaries = useSummariesOn()
   const startOver = () => {
     window.scrollTo({ top: 0 })
     void queryClient.resetQueries({ queryKey: getFeedInfiniteQueryKey() })
@@ -50,6 +52,7 @@ export function FeedPage() {
         <ResultList
           pages={feed.data.pages}
           surface="feed"
+          summaries={summaries}
           hasNextPage={feed.hasNextPage}
           isFetchingNextPage={feed.isFetchingNextPage}
           nextPageError={feed.isFetchNextPageError ? feed.error : null}

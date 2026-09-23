@@ -11,6 +11,7 @@ const PRELOAD_MARGIN = '800px'
 export function ResultList({
   pages,
   surface,
+  summaries,
   hasNextPage,
   isFetchingNextPage,
   nextPageError,
@@ -18,6 +19,8 @@ export function ResultList({
 }: {
   pages: FeedPage[]
   surface: Surface
+  /** Offer "Why might I like this?" on each card. */
+  summaries: boolean
   hasNextPage: boolean
   isFetchingNextPage: boolean
   nextPageError: unknown
@@ -55,6 +58,7 @@ export function ResultList({
             <ResultCard
               item={item}
               surface={surface}
+              summaries={summaries}
               onBlocked={(domain) => {
                 setBlockedBy((blocked) => new Map(blocked).set(domain, item.recommendation_id))
               }}

@@ -6,7 +6,8 @@
 Run after changing data/taxonomy/adaptation.toml, then review and commit
 data/taxonomy/descriptions.json. IAB topics have no descriptions, and embedding
 `path: description` tags documents far better than a bare name (PLAN.md §6.4). Needs
-OPENROUTER_API_KEY; the model is TAXONOMY_DESCRIPTION_MODEL.
+OPENROUTER_API_KEY; the model is TAXONOMY_DESCRIPTION_MODEL, and a run stops at
+TAXONOMY_DESCRIPTION_BUDGET_USD.
 """
 
 import argparse
@@ -17,6 +18,7 @@ from collections.abc import Mapping, Sequence
 
 from app.providers.llm import LLMProvider, OpenRouterLLM
 from app.providers.openrouter import OpenRouterClient
+from app.providers.spend import SpendMeter
 from app.settings import get_settings
 from app.taxonomy import (
     Description,
@@ -91,9 +93,10 @@ async def run(rewrite_all: bool) -> int:
     by_id = {topic.external_id: topic for topic in topics}
     existing = load_descriptions()
     todo = topics if rewrite_all else stale_descriptions(topics, existing)
+    meter = SpendMeter(settings.taxonomy_description_budget_usd)
     if todo:
         async with OpenRouterClient(settings) as client:
-            llm = OpenRouterLLM(client, settings.taxonomy_description_model)
+            llm = OpenRouterLLM(client, settings, meter, settings.taxonomy_description_model)
             written = await describe(llm, todo, by_id, settings.llm_concurrency)
     else:
         written = {}
@@ -101,9 +104,10 @@ async def run(rewrite_all: bool) -> int:
     merged = {**existing, **written}
     save_descriptions({topic.external_id: merged[topic.external_id] for topic in topics})
     logger.info(
-        "wrote %d descriptions with %s; %d topics in total",
+        "wrote %d descriptions with %s for $%.4f; %d topics in total",
         len(written),
         settings.taxonomy_description_model,
+        meter.spent_usd,
         len(topics),
     )
     return 0

@@ -1,5 +1,6 @@
 """Dependencies shared by the routes: the database session, the signed-in user, the search
-embedder. Tests override `get_session` and `get_query_embedder`."""
+embedder and the summarizer. Tests override `get_session`, `get_query_embedder` and
+`get_summarizer`."""
 
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
@@ -12,6 +13,7 @@ from app.auth import session_user
 from app.db.usr import User
 from app.search import QueryEmbedder
 from app.settings import Settings, get_settings
+from app.summaries import Summarizer
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
@@ -65,3 +67,12 @@ def get_query_embedder(request: Request) -> QueryEmbedder | None:
 
 
 Embedder = Annotated[QueryEmbedder | None, Depends(get_query_embedder)]
+
+
+def get_summarizer(request: Request) -> Summarizer | None:
+    """None when no provider is configured (no OPENROUTER_API_KEY)."""
+    summarizer: Summarizer | None = getattr(request.app.state, "summarizer", None)
+    return summarizer
+
+
+SummarizerDep = Annotated[Summarizer | None, Depends(get_summarizer)]

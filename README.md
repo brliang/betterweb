@@ -17,7 +17,8 @@ The full design and milestone list is in [docs/PLAN.md](docs/PLAN.md).
 | `backend/app/embed/` | The embed stage: document embeddings and topic tags |
 | `backend/app/score/` | The scoring stage: PageRank over the link graph, per-user rankings, profile vectors |
 | `backend/app/rank/` | Ranking: candidates, scores, feed composition and "why this?" explanations |
-| `backend/app/api/` | The API routes: auth, survey, settings, pins, feed, search, feedback, admin |
+| `backend/app/api/` | The API routes: auth, survey, settings, pins, feed, search, summaries, feedback, admin |
+| `backend/app/summaries.py` | Opt-in "Why might I like this?" summaries: prompt, cache, spend |
 | `backend/tests/fixtures/pages/` | Real saved pages (redistributable) that the extraction tests run on |
 | `backend/migrations/` | Alembic migrations, including the DB roles that keep the schemas apart |
 | `backend/app/providers/` | Embedding and LLM providers (OpenRouter), behind interfaces |
@@ -96,10 +97,12 @@ variable of the same upper-case name (see `.env.example`).
 Embeddings (Qwen3-Embedding-8B, 1024 dimensions) and LLM calls go through
 [OpenRouter](https://openrouter.ai) with one `OPENROUTER_API_KEY`. Set a monthly credit limit
 on the key in OpenRouter as well; the app's own cap is `PROVIDER_MONTHLY_SPEND_CAP_USD`
-(per calendar month, UTC). Every embeddings request is estimated before it is sent and refused
-if it would pass the cap; what each one cost is kept in `web.provider_spend`. When the cap is
+(per calendar month, UTC). Every embeddings and LLM request is estimated before it is sent and
+refused if it would pass the cap; what each one cost is kept in `web.provider_spend`. When the cap is
 reached, the embed stage stops and the remaining documents wait for next month's budget.
-The rest of the cycle, scoring included, still runs.
+The rest of the cycle, scoring included, still runs. Search and the opt-in "Why might I like
+this?" summaries (`SUMMARY_MODEL`, about $0.002 each, cached) answer 503 at the cap. A
+different chat model needs its price in `LLM_PRICES`.
 
 ## Topic taxonomy
 

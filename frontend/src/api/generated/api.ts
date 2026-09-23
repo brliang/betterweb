@@ -378,6 +378,17 @@ export interface SuggestedSourceOut {
   url: string;
 }
 
+export interface SummaryIn {
+  recommendation_id: number;
+}
+
+export interface SummaryOut {
+  created_at: string;
+  document_id: number;
+  model: string;
+  text: string;
+}
+
 /**
  * Version 1 of the survey, one field per step.
  */
@@ -840,6 +851,97 @@ export const useSignIn = <TError = ErrorType<HTTPValidationError>,
         TContext
       > => {
       return useMutation(getSignInMutationOptions(options), queryClient);
+    }
+
+export const getSummarizeUrl = (documentId: number,) => {
+
+
+
+
+  return `/api/documents/${documentId}/summary`
+}
+
+/**
+ * A short AI-written note on why the user might like the document: cached, else written
+ * now. Only for users who opted in (403 otherwise). Logs a `summary_view` event.
+ * @summary Summarize
+ */
+export const summarize = async (documentId: number,
+    summaryIn: SummaryIn, options?: Parameters<typeof apiFetch>[1]): Promise<SummaryOut> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<SummaryOut>(getSummarizeUrl(documentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(summaryIn)
+  }
+);}
+
+
+
+
+
+export const getSummarizeMutationKey = () => ['summarize'] as const;
+
+export const getSummarizeMutationOptions = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof summarize>>, TError,SummarizeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof summarize>>, TError,SummarizeMutationVariables, TContext> => {
+
+const mutationKey = getSummarizeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof summarize>>, SummarizeMutationVariables> = (props) => {
+          const {documentId,data} = props ?? {};
+
+          return  summarize(documentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SummarizeMutationResult = NonNullable<Awaited<ReturnType<typeof summarize>>>
+    export type SummarizeMutationBody = SummaryIn
+    export type SummarizeMutationError = ErrorType<HTTPValidationError>
+    export type SummarizeMutationVariables = {documentId: number;data: SummaryIn}
+
+    /**
+ * @summary Summarize
+ */
+export const useSummarize = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof summarize>>, TError,SummarizeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof summarize>>,
+        TError,
+        SummarizeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSummarizeMutationOptions(options), queryClient);
     }
 
 export const getRecordEventsUrl = () => {

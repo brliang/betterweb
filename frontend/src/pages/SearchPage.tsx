@@ -6,10 +6,12 @@ import { Loading } from '../components/Loading'
 import { ResultList } from '../components/ResultList'
 import { SearchForm } from '../components/SearchForm'
 import { pagedResults } from '../lib/paging'
+import { useSummariesOn } from '../lib/summaries'
 
 export function SearchPage() {
   const [params, setParams] = useSearchParams()
   const query = params.get('q')?.trim() ?? ''
+  const summaries = useSummariesOn()
   const results = useSearchInfinite(
     { q: query },
     { query: { ...pagedResults, enabled: query !== '' } },
@@ -49,6 +51,7 @@ export function SearchPage() {
           key={query}
           pages={results.data.pages}
           surface="search"
+          summaries={summaries}
           hasNextPage={results.hasNextPage}
           isFetchingNextPage={results.isFetchingNextPage}
           nextPageError={results.isFetchNextPageError ? results.error : null}

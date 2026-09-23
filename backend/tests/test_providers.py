@@ -204,6 +204,16 @@ def chat_response(content: str | None, finish_reason: str = "stop") -> httpx2.Re
     )
 
 
+def llm_settings(**overrides: object) -> Settings:
+    # $1 per token in and $10 per token out, 1 character per token: easy arithmetic.
+    prices = {"some/model": {"input": 1_000_000, "output": 10_000_000}}
+    return settings(
+        llm_prices={**Settings.model_fields["llm_prices"].get_default(), **prices},
+        provider_chars_per_token=1,
+        **overrides,
+    )
+
+
 async def test_llm_complete() -> None:
     bodies: list[dict[str, object]] = []
 
@@ -211,8 +221,10 @@ async def test_llm_complete() -> None:
         bodies.append(json.loads(request.content))
         return chat_response("  A sentence.\n")
 
-    async with OpenRouterClient(settings(), transport=Handler(handler)) as client:
-        text = await OpenRouterLLM(client, "some/model").complete(
+    config = llm_settings()
+    spend = meter(budget_usd=1000)
+    async with OpenRouterClient(config, transport=Handler(handler)) as client:
+        text = await OpenRouterLLM(client, config, spend, "some/model").complete(
             system="Be brief.", prompt="Describe.", max_tokens=50
         )
 
@@ -227,6 +239,51 @@ async def test_llm_complete() -> None:
             "max_tokens": 50,
         }
     ]
+    # No reported cost: priced from the reported tokens, 10 in at $1 and 5 out at $10.
+    assert spend.take() == [Charge("some/model", 15, 60.0, estimated=True)]
+
+
+@pytest.mark.parametrize(
+    ("usage", "charge"),
+    [
+        (
+            {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15, "cost": 0.5},
+            Charge("some/model", 15, 0.5, estimated=False),
+        ),
+        # No usage: the estimate, 2 characters in and a full 3-token reply.
+        (None, Charge("some/model", 5, 2 + 30, estimated=True)),
+    ],
+)
+async def test_llm_charges(usage: dict[str, object] | None, charge: Charge) -> None:
+    body = {"choices": [{"message": {"content": "Hi."}, "finish_reason": "stop"}], "usage": usage}
+    config = llm_settings()
+    spend = meter(budget_usd=1000)
+    async with OpenRouterClient(
+        config, transport=Handler(lambda _: httpx2.Response(200, json=body))
+    ) as client:
+        await OpenRouterLLM(client, config, spend, "some/model").complete(
+            system="s", prompt="p", max_tokens=3
+        )
+    assert spend.take() == [charge]
+
+
+async def test_llm_refuses_a_request_over_the_budget() -> None:
+    calls = 0
+
+    def handler(_: httpx2.Request) -> httpx2.Response:
+        nonlocal calls
+        calls += 1
+        return chat_response("Hi.")
+
+    # 2 characters in ($2) and up to 3 tokens out ($30) don't fit in $31.
+    config = llm_settings()
+    spend = meter(budget_usd=31)
+    async with OpenRouterClient(config, transport=Handler(handler)) as client:
+        llm = OpenRouterLLM(client, config, spend, "some/model")
+        with pytest.raises(SpendCapReached):
+            await llm.complete(system="s", prompt="p", max_tokens=3)
+    assert calls == 0
+    assert spend.take() == []
 
 
 @pytest.mark.parametrize(
@@ -234,6 +291,12 @@ async def test_llm_complete() -> None:
     [(chat_response(None), "no text"), (chat_response("Cut off", "length"), "max_tokens")],
 )
 async def test_llm_rejects_unusable_replies(response: httpx2.Response, message: str) -> None:
-    async with OpenRouterClient(settings(), transport=Handler(lambda _: response)) as client:
+    config = llm_settings()
+    spend = meter(budget_usd=1000)
+    async with OpenRouterClient(config, transport=Handler(lambda _: response)) as client:
         with pytest.raises(ProviderError, match=message):
-            await OpenRouterLLM(client, "some/model").complete(system="s", prompt="p", max_tokens=5)
+            await OpenRouterLLM(client, config, spend, "some/model").complete(
+                system="s", prompt="p", max_tokens=5
+            )
+    # Paid for all the same.
+    assert [charge.tokens for charge in spend.take()] == [15]

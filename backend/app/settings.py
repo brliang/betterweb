@@ -27,6 +27,15 @@ class RankingWeights(BaseModel):
     hide: float = Field(ge=0)
 
 
+class TokenPrices(BaseModel):
+    """A chat model's price in USD per million tokens (see openrouter.ai/models)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    input: float = Field(ge=0)
+    output: float = Field(ge=0)
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", extra="ignore", frozen=True, use_attribute_docstrings=True
@@ -274,8 +283,27 @@ class Settings(BaseSettings):
     than embedding both sides plainly. Changing it needs `taxonomy embed --all`."""
     taxonomy_description_model: str = "anthropic/claude-sonnet-5"
     """Writes the one-off topic descriptions in backend/data/taxonomy (PLAN.md §6.4)."""
+    taxonomy_description_budget_usd: float = Field(default=2.0, ge=0)
+    """Most one run of scripts.describe_topics may spend. It runs on a developer's machine and
+    its output is committed, so it has its own budget instead of a deployment's ledger."""
     llm_concurrency: int = Field(default=8, ge=1)
     """Parallel LLM requests for batch jobs such as topic descriptions."""
+    llm_prices: dict[str, TokenPrices] = {
+        "anthropic/claude-sonnet-5": TokenPrices(input=2.0, output=10.0),
+    }
+    """Chat model prices by model. Estimates each request before it is sent (so the spend cap
+    holds) and costs it when the provider reports no cost. Every configured model needs one."""
+
+    # Opt-in summaries (PLAN.md §6.8)
+    summary_model: str = "anthropic/claude-sonnet-5"
+    """Writes "Why might I like this?" summaries. Cached per model, so a change writes new ones."""
+    summary_max_tokens: int = Field(default=200, ge=1)
+    """Room for two sentences; a longer reply is an error rather than a cut-off summary."""
+    summary_text_max_chars: int = Field(default=1500, ge=0)
+    """Characters of the document's text in the prompt, after its title and excerpt."""
+    summary_max_interests: int = Field(default=12, ge=0)
+    """Most interest names in the prompt: those the document falls under first, then the
+    strongest."""
 
     @model_validator(mode="after")
     def _every_preset_and_level_has_a_weight(self) -> Self:
@@ -285,6 +313,13 @@ class Settings(BaseSettings):
         ]
         if missing:
             raise ValueError(f"no weights for {sorted(missing)}")
+        return self
+
+    @model_validator(mode="after")
+    def _every_chat_model_has_a_price(self) -> Self:
+        unpriced = {self.summary_model, self.taxonomy_description_model} - self.llm_prices.keys()
+        if unpriced:
+            raise ValueError(f"no LLM_PRICES for {sorted(unpriced)}")
         return self
 
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FeedItem, Surface } from '../api/generated/api'
-import { useGiveFeedback } from '../api/generated/api'
+import { useGiveFeedback, useSummarize } from '../api/generated/api'
 import { eventQueue } from '../events/eventQueue'
 import { watchImpression } from '../events/impressions'
 import { formatDate } from '../lib/format'
@@ -10,20 +10,25 @@ import { BlockConfirm } from './BlockConfirm'
 import { ErrorNotice } from './ErrorNotice'
 import { LikeReasonPrompt } from './LikeReasonPrompt'
 import { ReasonChips } from './ReasonChips'
+import { SummaryPanel } from './SummaryPanel'
 import { WhyPanel } from './WhyPanel'
 
 /** One feed or search result: the document, why it's here, and what you can do with it. */
 export function ResultCard({
   item,
   surface,
+  summaries,
   onBlocked,
 }: {
   item: FeedItem
   surface: Surface
+  /** Offer "Why might I like this?" (the user opted in to summaries). */
+  summaries: boolean
   onBlocked: (domain: string) => void
 }) {
   const { document, recommendation_id, position } = item
   const [whyOpen, setWhyOpen] = useState(false)
+  const [summaryOpen, setSummaryOpen] = useState(false)
   const [confirmingBlock, setConfirmingBlock] = useState(false)
   const [promptDone, setPromptDone] = useState(false)
   const like = useGiveFeedback()
@@ -35,9 +40,15 @@ export function ResultCard({
       },
     },
   })
+  // Written once when first opened; the server caches it, and each request logs a view.
+  const summary = useSummarize()
+  const writeSummary = () => {
+    summary.mutate({ documentId: document.id, data: { recommendation_id } })
+  }
   const reference = { document_id: document.id, recommendation_id, position }
   const titleId = `result-${String(recommendation_id)}`
   const whyId = `why-${String(recommendation_id)}`
+  const summaryId = `summary-${String(recommendation_id)}`
   const feedbackError = like.error ?? hide.error ?? block.error
 
   const trackImpression = (element: HTMLElement | null) =>
@@ -147,6 +158,20 @@ export function ResultCard({
         >
           Why this?
         </button>
+        {summaries && (
+          <button
+            type="button"
+            className={quietButton}
+            aria-expanded={summaryOpen}
+            aria-controls={summaryOpen ? summaryId : undefined}
+            onClick={() => {
+              if (!summaryOpen && summary.isIdle) writeSummary()
+              setSummaryOpen(!summaryOpen)
+            }}
+          >
+            Why might I like this?
+          </button>
+        )}
       </div>
       {feedbackError && (
         <div className="mt-2">
@@ -171,6 +196,14 @@ export function ResultCard({
           onDone={() => {
             setPromptDone(true)
           }}
+        />
+      )}
+      {summaryOpen && (
+        <SummaryPanel
+          id={summaryId}
+          summary={summary.data}
+          error={summary.error}
+          onRetry={writeSummary}
         />
       )}
       {whyOpen && <WhyPanel id={whyId} recommendationId={recommendation_id} />}

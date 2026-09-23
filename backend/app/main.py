@@ -4,13 +4,26 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
-from app.api import admin, auth, catalog, feed, feedback, health, pins, preferences, survey
+from app.api import (
+    admin,
+    auth,
+    catalog,
+    feed,
+    feedback,
+    health,
+    pins,
+    preferences,
+    summaries,
+    survey,
+)
 from app.db.session import create_engine, create_sessionmaker
 from app.providers.embeddings import OpenRouterEmbeddings
+from app.providers.llm import OpenRouterLLM
 from app.providers.openrouter import OpenRouterClient
 from app.providers.spend import SpendMeter
 from app.search import QueryEmbedder
 from app.settings import get_settings
+from app.summaries import Summarizer
 
 
 def _operation_id(route: APIRoute) -> str:
@@ -20,7 +33,7 @@ def _operation_id(route: APIRoute) -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """The database engine, and the search embedder when a provider key is set."""
+    """The database engine, and the search embedder and summarizer when a provider key is set."""
     settings = get_settings()
     engine = create_engine(settings)
     app.state.sessionmaker = create_sessionmaker(engine)
@@ -33,7 +46,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             def provider(meter: SpendMeter) -> OpenRouterEmbeddings:
                 return OpenRouterEmbeddings(client, settings, meter)
 
+            def llm(meter: SpendMeter) -> OpenRouterLLM:
+                return OpenRouterLLM(client, settings, meter, settings.summary_model)
+
             app.state.query_embedder = QueryEmbedder(settings, provider)
+            app.state.summarizer = Summarizer(settings, llm)
         yield
 
 
@@ -44,7 +61,18 @@ def create_app() -> FastAPI:
         generate_unique_id_function=_operation_id,
         lifespan=lifespan,
     )
-    for module in (health, auth, catalog, survey, preferences, pins, feed, feedback, admin):
+    for module in (
+        health,
+        auth,
+        catalog,
+        survey,
+        preferences,
+        pins,
+        feed,
+        summaries,
+        feedback,
+        admin,
+    ):
         app.include_router(module.router)
     return app
 

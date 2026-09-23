@@ -7,11 +7,12 @@ import { feedItem, feedPage } from '../test/fixtures'
 import { renderPage } from '../test/render'
 import { ResultList } from './ResultList'
 
-function renderList(items = [feedItem(1)]) {
+function renderList(items = [feedItem(1)], { summaries = false } = {}) {
   return renderPage(
     <ResultList
       pages={[feedPage(items)]}
       surface="feed"
+      summaries={summaries}
       hasNextPage={false}
       isFetchingNextPage={false}
       nextPageError={null}
@@ -139,4 +140,61 @@ it('logs a click on the title', async () => {
     position: 1,
     surface: 'feed',
   })
+})
+
+const summary = {
+  document_id: 1,
+  text: 'You follow rail travel, and this is about night trains.',
+  model: 'anthropic/claude-sonnet-5',
+  created_at: '2026-09-23T00:00:00Z',
+}
+
+it('offers summaries only to those who opted in', () => {
+  renderList([feedItem(1)], { summaries: false })
+  expect(screen.queryByRole('button', { name: 'Why might I like this?' })).not.toBeInTheDocument()
+})
+
+it('writes a summary once, and toggles it', async () => {
+  const calls = mockApi({ 'POST /api/documents/1/summary': { body: summary } })
+  renderList([feedItem(1)], { summaries: true })
+  const button = screen.getByRole('button', { name: 'Why might I like this?' })
+  await userEvent.click(button)
+  const panel = await screen.findByRole('region', { name: 'Why might I like this?' })
+  expect(await within(panel).findByText(summary.text)).toBeInTheDocument()
+  expect(
+    within(panel).getByText(/Written by AI \(anthropic\/claude-sonnet-5\)/),
+  ).toBeInTheDocument()
+  expect(calls).toEqual([
+    {
+      method: 'POST',
+      path: '/api/documents/1/summary',
+      body: { recommendation_id: 101 },
+      keepalive: false,
+    },
+  ])
+
+  await userEvent.click(button)
+  expect(button).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.queryByText(summary.text)).not.toBeInTheDocument()
+  await userEvent.click(button)
+  expect(screen.getByText(summary.text)).toBeInTheDocument()
+  expect(calls).toHaveLength(1)
+})
+
+it('explains a summary that could not be written, and retries', async () => {
+  let fail = true
+  mockApi({
+    'POST /api/documents/1/summary': () =>
+      fail
+        ? { status: 503, body: { detail: "this month's model spend cap is reached" } }
+        : { body: summary },
+  })
+  renderList([feedItem(1)], { summaries: true })
+  await userEvent.click(screen.getByRole('button', { name: 'Why might I like this?' }))
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent("Summaries aren't available right now")
+  expect(alert).toHaveTextContent('spend cap is reached')
+  fail = false
+  await userEvent.click(within(alert).getByRole('button', { name: 'Try again' }))
+  expect(await screen.findByText(summary.text)).toBeInTheDocument()
 })
