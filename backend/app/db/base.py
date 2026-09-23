@@ -14,6 +14,10 @@ USR = "usr"
 JSONObject = dict[str, object]
 Embedding = list[float]
 
+EMBEDDING_DIMENSIONS = 1024
+"""Vector size of every embedding column (PLAN.md §6.4). Changing it needs a migration and
+re-embedding everything; providers truncate longer vectors to this size."""
+
 
 class Base(DeclarativeBase):
     # Deterministic constraint names, so Alembic can drop and alter them.
@@ -30,9 +34,8 @@ class Base(DeclarativeBase):
         str: sa.Text,  # Postgres: text, not varchar
         datetime: TIMESTAMP(timezone=True),
         JSONObject: JSONB,
-        # Unconstrained dimension until the embedding model is chosen (PLAN.md §14 Q3); M5
-        # fixes the dimension and adds the HNSW indexes in a migration.
-        Embedding: VECTOR(),
+        # M5 adds the HNSW indexes.
+        Embedding: VECTOR(EMBEDDING_DIMENSIONS),
         # Enums are stored as their values in text columns with a CHECK constraint.
         Enum: sa.Enum(
             Enum,

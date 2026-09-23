@@ -18,6 +18,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 COPY pyproject.toml ./
 COPY migrations ./migrations
+COPY data ./data
 COPY app ./app
 
 RUN useradd --system --uid 10001 app

@@ -39,11 +39,18 @@ services:
       migrate:
         condition: service_completed_successfully
 
-  # Not long-running: invoke with `docker compose run --rm worker cycle run`.
+  # Not long-running: invoke with `docker compose run --rm worker cycle run`, `taxonomy seed`, etc.
   worker:
     build: ./backend
     entrypoint: ["python", "-m", "app.worker"]
+    # For OPENROUTER_API_KEY; `environment` still wins for DATABASE_URL.
+    env_file:
+      - path: ./backend/.env
+        required: false
     environment: *backend-env
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/data:/app/data
     profiles: [worker]
     depends_on:
       migrate:

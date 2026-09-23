@@ -1,0 +1,1042 @@
+{
+  "1": {
+    "name": "Automotive",
+    "description": "Covers vehicles and their manufacturers, models, engines, driving experiences, ownership costs, and industry news, spanning cars, trucks, motorcycles, and scooters alongside related mechanical, safety, and enthusiast topics."
+  },
+  "42": {
+    "name": "Books and Literature",
+    "description": "Covers reading, publishing, authorship, book reviews, literary genres, novels, memoirs, biographies, libraries, bookstores, book clubs, literary criticism, and the craft of writing across fiction and non-fiction works."
+  },
+  "52": {
+    "name": "Business and Finance",
+    "description": "Covers corporate strategy, markets, macroeconomic trends, industry-specific sectors like manufacturing or retail, and entrepreneurial ventures, including topics such as investing, trade, company earnings, economic policy, and new business formation."
+  },
+  "123": {
+    "name": "Careers",
+    "description": "Covers finding, choosing, and progressing in jobs and professions, including resumes, interviews, workplace skills, promotions, career transitions, apprenticeships, vocational courses, remote work arrangements, and long-term professional development strategies."
+  },
+  "80DV8O": {
+    "name": "Communication",
+    "description": "Covers interpersonal and mass communication methods, including messaging apps, email etiquette, public speaking, linguistics, sign language, telecommunications infrastructure, social media interaction, journalism practices, and strategies for effective listening and conflict resolution."
+  },
+  "380": {
+    "name": "Crime",
+    "description": "Covers criminal acts such as theft, fraud, assault, homicide, cybercrime, drug trafficking and organized crime, along with investigations, arrests, criminal trials, victims, and law enforcement efforts to prevent or solve offenses."
+  },
+  "381": {
+    "name": "Disasters",
+    "description": "Covers natural and man-made catastrophes such as earthquakes, hurricanes, floods, wildfires, tsunamis, volcanic eruptions, industrial accidents, and nuclear meltdowns, including emergency response, evacuation efforts, casualty reports, and recovery and relief operations."
+  },
+  "132": {
+    "name": "Education",
+    "description": "Covers teaching and learning processes across schools, universities, and informal settings, including curricula, classroom instruction, testing, teachers, students, degrees, and educational policy."
+  },
+  "JLBCU7": {
+    "name": "Entertainment",
+    "description": "Covers celebrity news, award shows, streaming platforms, concerts, and performances, along with reviews and industry gossip surrounding film, recorded music, and broadcast or streaming programming."
+  },
+  "186": {
+    "name": "Family and Relationships",
+    "description": "Covers the dynamics of romantic partnerships, family bonds, and personal connections, including grief and loss, courtship, divorce proceedings, caring for aging relatives, weddings, child-rearing, and navigating life unpartnered."
+  },
+  "201": {
+    "name": "Fine Art",
+    "description": "Covers painting, sculpture, and other visual and performing art forms, including artistic techniques, exhibitions, galleries, museums, art history movements, choreography, costume design, and stage productions."
+  },
+  "210": {
+    "name": "Food & Drink",
+    "description": "Covers recipes, ingredients, meal preparation, restaurants, beverages, dietary lifestyles, culinary traditions from around the world, and the culture surrounding eating, drinking, cooking techniques, and food-related trends or restrictions."
+  },
+  "223": {
+    "name": "Healthy Living",
+    "description": "Covers everyday habits and lifestyle choices for maintaining physical and mental well-being, including balanced diets, exercise routines, sleep, stress management, preventive care, and age- or gender-specific guidance for children, men, women, and seniors."
+  },
+  "239": {
+    "name": "Hobbies & Interests",
+    "description": "Covers leisure pursuits and personal pastimes such as collecting, crafting, birdwatching, beekeeping, tracing family trees, playing instruments, building model toys, and exploring magic tricks, sci-fi fandom, or paranormal curiosities."
+  },
+  "274": {
+    "name": "Home & Garden",
+    "description": "Covers caring for and improving domestic living spaces, including planting and lawn care, furnishing and decorating rooms, hosting guests, renovating structures, securing properties, and installing connected household devices."
+  },
+  "383": {
+    "name": "Law",
+    "description": "Covers legal systems, courts, litigation, contracts, regulations, legislation, lawsuits, attorneys, judges, legal rights and obligations, intellectual property, civil and constitutional matters, and judicial rulings across jurisdictions."
+  },
+  "286": {
+    "name": "Medical Health",
+    "description": "Covers clinical topics such as diagnosing illnesses and disorders, laboratory and imaging tests, prescription and over-the-counter medications, surgical procedures, and immunizations, focusing on treatment and medical care rather than general wellness habits."
+  },
+  "391": {
+    "name": "Personal Finance",
+    "description": "Covers managing individual and household money matters such as budgeting, saving, credit scores, loans, bank accounts, insurance policies, investments, taxes, debt repayment, and preparing financially for retirement."
+  },
+  "422": {
+    "name": "Pets",
+    "description": "Covers the care, feeding, training, and behavior of domesticated and companion animals kept in homes, including supplies, breeds, habitats, and daily routines for keeping animals healthy and happy."
+  },
+  "386": {
+    "name": "Politics",
+    "description": "Covers government institutions, political parties, campaigns, voting, legislation, diplomacy, and public policy debates, along with the officials, ideologies, and civic processes that shape national and local governance."
+  },
+  "432": {
+    "name": "Pop Culture",
+    "description": "Covers celebrities and internet-famous figures, tracking their personal milestones, relationships, families, homes, fashion choices, controversies, deaths, and viral memes, jokes, or satirical takes circulating in mainstream entertainment gossip and internet culture."
+  },
+  "441": {
+    "name": "Real Estate",
+    "description": "Covers buying, selling, renting, and appraising residential or commercial property, including mortgages, listings, housing markets, real estate agents, property investment, zoning, and construction of new developments."
+  },
+  "453": {
+    "name": "Religion & Spirituality",
+    "description": "Covers beliefs, practices, and traditions surrounding faith, worship, sacred texts, deities, rituals, prayer, meditation, religious institutions, clergy, holy sites, spiritual growth, the afterlife, and questions about the existence or nature of the divine."
+  },
+  "464": {
+    "name": "Science",
+    "description": "Covers research, experiments, theories, and discoveries across natural and physical disciplines, including living organisms, matter, ecosystems, heredity, landforms, numbers, forces, celestial bodies, and atmospheric phenomena."
+  },
+  "483": {
+    "name": "Sports",
+    "description": "Covers competitive athletics and physical games across teams and individual disciplines, including scores, matches, tournaments, leagues, athletes, coaching, training, rules, and championships spanning professional, amateur, and recreational play."
+  },
+  "552": {
+    "name": "Style & Fashion",
+    "description": "Covers clothing, accessories, grooming, cosmetics, tattoos and piercings, runway shows, designer labels, seasonal trends, and personal styling choices across everyday, luxury, and street-inspired looks for men and women."
+  },
+  "596": {
+    "name": "Technology & Computing",
+    "description": "Covers digital devices, computer systems, coding languages, networks, gadgets, apps, cybersecurity threats, machine intelligence, and emerging tools like virtual and augmented reality that shape how people work and communicate."
+  },
+  "653": {
+    "name": "Travel",
+    "description": "Covers destinations, itineraries, transportation, lodging, packing tips, visas, and travel styles such as adventure, budget, luxury, or family trips, guiding readers who are planning or recounting trips abroad or locally."
+  },
+  "680": {
+    "name": "Video Gaming",
+    "description": "Covers interactive digital play across platforms and formats, including game reviews, hardware and controllers, downloadable titles, multiplayer sessions, character builds, storylines, cheats, patches, and gaming culture news."
+  },
+  "389": {
+    "name": "War and Conflicts",
+    "description": "Covers armed conflicts, military operations, battles, insurgencies, terrorism, and warfare strategy, including troop movements, weapons systems, ceasefires, casualties, and geopolitical tensions between nations, rebel groups, or armed factions."
+  },
+  "x-history": {
+    "name": "History",
+    "description": "Covers ancient civilizations, empires, monarchies, revolutions, archaeology, historical figures, timelines, and eras such as the Renaissance or Industrial Revolution, examining past events, cultures, and societal developments over time."
+  },
+  "x-philosophy": {
+    "name": "Philosophy",
+    "description": "Explores fundamental questions of existence, knowledge, ethics, logic, and reasoning through the ideas of thinkers like Kant, Nietzsche, and Socrates, covering metaphysics, epistemology, and moral philosophy."
+  },
+  "33": {
+    "name": "Auto Recalls",
+    "description": "Covers manufacturer notices about defective vehicles or parts, including recall announcements, affected models and VIN ranges, safety-related repairs offered free of charge, and regulatory actions by agencies like NHTSA."
+  },
+  "34": {
+    "name": "Auto Repair",
+    "description": "Covers diagnosing and fixing mechanical or electrical problems in vehicles, including brake jobs, engine repairs, transmission work, oil changes, tire replacement, mechanic shops, warranties, and repair costs."
+  },
+  "35": {
+    "name": "Auto Safety",
+    "description": "Covers crash-test ratings, seatbelt and airbag systems, child car seats, driver-assistance features like automatic braking and collision warnings, defensive driving techniques, and government safety regulations governing vehicle design and road use."
+  },
+  "36": {
+    "name": "Auto Shows",
+    "description": "Coverage of international and regional vehicle exhibitions featuring concept car reveals, new model debuts, manufacturer press conferences, prototype unveilings, and industry announcements at venues like Detroit, Geneva, Tokyo, and Frankfurt."
+  },
+  "37": {
+    "name": "Auto Technology",
+    "description": "Covers advancements in vehicle engineering such as electric powertrains, autonomous driving systems, driver-assistance sensors, infotainment interfaces, connectivity features, battery innovations, and emerging propulsion methods shaping how cars are designed and operated."
+  },
+  "25": {
+    "name": "Car Culture",
+    "description": "Covers car meets, cruises and shows, tuning and restoration projects, vintage and classic car collecting, enthusiast communities, automotive photography, and cars in movies, video games and celebrity garages."
+  },
+  "27": {
+    "name": "Motorcycles",
+    "description": "Covers motorcycle models, engines, and riding gear, including cruisers, sport bikes, and off-road machines, along with buying guides, maintenance tips, licensing requirements, and rider safety courses specific to two-wheeled motor vehicles."
+  },
+  "29": {
+    "name": "Scooters",
+    "description": "Covers gas and electric scooters and mopeds, including model reviews, engine specifications, top speeds, fuel efficiency, licensing requirements, urban commuting use, and comparisons between brands like Vespa, Honda, and electric micromobility manufacturers."
+  },
+  "43": {
+    "name": "Art and Photography",
+    "description": "Covers illustrated volumes and monographs showcasing fine art, photography collections, art history, design portfolios, and technique guides, featuring visual imagery alongside critical commentary rather than sequential panel storytelling or prose narratives."
+  },
+  "46": {
+    "name": "Comics and Graphic Novels",
+    "description": "Covers superhero, manga, indie, and webcomic titles alongside sequential-art storytelling techniques, panel layouts, illustrators and writers, comic conventions, graphic novel adaptations, character franchises, and issue or volume releases."
+  },
+  "48": {
+    "name": "Fiction",
+    "description": "Explores novels, short stories, and narrative genres like mystery, romance, science fiction, and fantasy, covering plot summaries, character analysis, author interviews, book reviews, and discussions of literary craft and storytelling techniques."
+  },
+  "49": {
+    "name": "Poetry",
+    "description": "Covers verse forms such as sonnets, haiku, free verse, and epic poems, exploring poets' use of meter, rhyme, imagery, and metaphor, along with anthologies, literary analysis, and poetry readings."
+  },
+  "53": {
+    "name": "Business",
+    "description": "Covers company operations, management strategy, leadership, corporate governance, mergers and acquisitions, human resources, entrepreneurship within established firms, business models, and organizational decision-making across established companies."
+  },
+  "61": {
+    "name": "Startups",
+    "description": "Covers new venture creation, seed and venture capital funding rounds, founder equity, pitch decks, incubators and accelerators, product-market fit, scaling strategies, and startup failure or acquisition outcomes."
+  },
+  "80": {
+    "name": "Economy",
+    "description": "Covers macroeconomic indicators, GDP growth, inflation, unemployment rates, monetary and fiscal policy, central bank decisions, trade balances, recessions, and economic forecasts affecting nations, regions, or global markets."
+  },
+  "90": {
+    "name": "Industries",
+    "description": "Covers sector-specific analysis of manufacturing, retail, healthcare, energy, agriculture, and technology industries, including market trends, supply chains, regulatory challenges, competitive dynamics, and major companies operating within each specific field."
+  },
+  "124": {
+    "name": "Apprenticeships",
+    "description": "Combines paid on-the-job training with structured classroom instruction under a skilled mentor, covering trade qualifications, apprenticeship applications, wage progression, union sponsorship, and pathways into fields like construction, manufacturing, or electrical work."
+  },
+  "125": {
+    "name": "Career Advice",
+    "description": "Practical guidance covers workplace conduct, communication with managers and colleagues, negotiating salary or promotions, building professional relationships, handling conflicts, managing performance reviews, and developing skills to succeed and grow within a current job or organization."
+  },
+  "126": {
+    "name": "Career Planning",
+    "description": "Covers setting long-term professional goals, assessing skills and interests, mapping career paths and milestones, evaluating industries and roles, and creating action plans for advancement, transitions, or career changes over time."
+  },
+  "127": {
+    "name": "Job Search",
+    "description": "Covers finding and applying for open positions, including writing resumes and cover letters, using job boards and recruiters, networking for leads, preparing for interviews, and negotiating job offers."
+  },
+  "130": {
+    "name": "Remote Working",
+    "description": "Covers strategies and tools for working from home or distributed locations, including video conferencing platforms, virtual collaboration, home office setup, time zone coordination, remote team management, and maintaining work-life balance outside a traditional office."
+  },
+  "131": {
+    "name": "Vocational Training",
+    "description": "Covers skills-based education programs such as trade schools, technical certifications, and hands-on training in fields like welding, plumbing, culinary arts, cosmetology, and automotive repair for entering specific occupations."
+  },
+  "133": {
+    "name": "Adult Education",
+    "description": "Covers programs and instruction designed for adults returning to learning after leaving traditional schooling, including GED preparation, literacy and numeracy classes, continuing education, workforce retraining, and community college courses tailored to working learners."
+  },
+  "137": {
+    "name": "College Education",
+    "description": "Covers undergraduate and graduate university life, including admissions, financial aid, majors, tuition, campus housing, lectures, professors, degree programs, internships, and preparing for careers after earning a bachelor's or advanced degree."
+  },
+  "142": {
+    "name": "Early Childhood Education",
+    "description": "Covers learning and development for infants, toddlers, and preschoolers, including play-based curricula, kindergarten readiness, developmental milestones, daycare and preschool programs, early literacy and numeracy activities, and caregiver-child interaction strategies."
+  },
+  "143": {
+    "name": "Educational Assessment",
+    "description": "Covers standardized testing, grading systems, rubrics, formative and summative evaluation methods, exam preparation, test scoring, learning outcome measurement, accreditation standards, and tools educators use to gauge student proficiency and progress."
+  },
+  "145": {
+    "name": "Homeschooling",
+    "description": "Covers parents teaching children at home instead of enrolling them in traditional schools, including curriculum selection, unschooling, homeschool co-ops, legal requirements, socialization strategies, and lesson planning for various grade levels."
+  },
+  "146": {
+    "name": "Homework and Study",
+    "description": "Covers techniques for completing assignments, managing time, taking notes, preparing for exams, and building concentration, including study schedules, memory strategies, tutoring resources, and tips for reducing academic stress and procrastination."
+  },
+  "147": {
+    "name": "Language Learning",
+    "description": "Covers acquiring new languages through vocabulary drills, grammar practice, pronunciation exercises, immersion programs, bilingual education, translation apps, language exchange partners, fluency milestones, and standardized proficiency tests like TOEFL or DELF."
+  },
+  "148": {
+    "name": "Online Education",
+    "description": "Covers virtual classrooms, MOOCs, e-learning platforms, video lectures, learning management systems, remote instruction tools, digital course design, webinars, and asynchronous or synchronous coursework delivered over the internet."
+  },
+  "149": {
+    "name": "Primary Education",
+    "description": "Covers elementary schooling for children roughly ages 6 to 11, including grade-level curricula, classroom teaching methods, literacy and numeracy foundations, teacher training, school routines, and parental involvement in this stage."
+  },
+  "134": {
+    "name": "Private School",
+    "description": "Independently funded K-12 institutions charging tuition, covering admissions, boarding schools, religious or preparatory academies, scholarships, curricula, uniforms, and comparisons with public schooling."
+  },
+  "135": {
+    "name": "Secondary Education",
+    "description": "Covers middle and high school grades serving students roughly ages eleven to eighteen, including topics like curriculum tracks, standardized testing preparation, extracurricular activities, college-prep coursework, teenage social dynamics, and the transition toward graduation or higher education."
+  },
+  "136": {
+    "name": "Special Education",
+    "description": "Covers instruction and support services for students with disabilities or learning differences, including IEPs, accommodations, assistive technology, inclusion classrooms, autism support, and speech or occupational therapy in school settings."
+  },
+  "324": {
+    "name": "Movies",
+    "description": "Covers films, actors, directors, box office results, reviews, trailers, film festivals, cinema releases, streaming premieres, and behind-the-scenes production news for feature-length motion pictures."
+  },
+  "338": {
+    "name": "Music",
+    "description": "Covers artists, bands, albums, songs, genres, concerts, festivals, streaming charts, music videos, instruments, and industry news, including reviews, biographies, and lyrics analysis across pop, rock, hip-hop, and other genres."
+  },
+  "640": {
+    "name": "Television",
+    "description": "Covers TV shows, series, episodes, streaming platforms, networks, cast and crew, ratings, renewals and cancellations, plus genres like sitcoms, dramas, reality shows, and talk shows."
+  },
+  "187": {
+    "name": "Bereavement",
+    "description": "Covers the experience of losing a loved one through death, including grief stages, coping mechanisms, funeral planning, mourning rituals, memorializing the deceased, and supporting grieving family members or friends."
+  },
+  "188": {
+    "name": "Dating",
+    "description": "Covers meeting potential partners, first dates, courtship rituals, online dating apps and profiles, flirting, breakups, relationship red flags, and navigating romance before commitment to marriage or long-term partnership."
+  },
+  "189": {
+    "name": "Divorce",
+    "description": "Covers the legal dissolution of marriage, including separation, custody arrangements, alimony, asset division, divorce mediation, co-parenting after split, emotional recovery, and navigating life changes after ending a spousal relationship."
+  },
+  "190": {
+    "name": "Eldercare",
+    "description": "Covers caring for aging parents or relatives, including in-home caregiving, assisted living and nursing home decisions, managing medical appointments and medications, dementia care, and coping with caregiver stress and burnout."
+  },
+  "191": {
+    "name": "Marriage and Civil Unions",
+    "description": "Covers wedding planning, ceremonies, engagement traditions, vows, marriage licenses, civil partnerships, honeymoon logistics, and the dynamics of sustaining a committed partnership through shared finances, communication, and long-term companionship."
+  },
+  "192": {
+    "name": "Parenting",
+    "description": "Covers raising children from infancy through adolescence, including discipline strategies, developmental milestones, feeding and sleep routines, education choices, child safety, and balancing work with caregiving responsibilities."
+  },
+  "200": {
+    "name": "Single Life",
+    "description": "Explores the experience of living independently without a romantic partner, covering self-reliance, solo living arrangements, friendships, personal freedom, financial independence, and navigating social expectations or stigma around being unmarried or unpartnered."
+  },
+  "202": {
+    "name": "Costume",
+    "description": "Covers costume design as a fine art form, including historical clothing reconstruction, wearable sculpture, avant-garde fashion pieces, mask-making, and elaborate garments created for exhibition, performance, or artistic display rather than everyday wear."
+  },
+  "203": {
+    "name": "Dance",
+    "description": "Explores choreography, ballet, contemporary and modern dance performances, dancers and companies, movement technique, dance criticism, and stage productions, focusing on the art of physical expression rather than sets, attire, or acting."
+  },
+  "204": {
+    "name": "Design",
+    "description": "Encompasses the visual composition of graphic layouts, typography, product forms, and applied aesthetics, covering principles like color theory, spatial balance, and functional creativity across print, industrial, and environmental design disciplines."
+  },
+  "205": {
+    "name": "Digital Arts",
+    "description": "Digital painting, generative and algorithmic art, 3D rendering, vector illustration, pixel art, and multimedia installations created or manipulated using software, tablets, and computational tools rather than traditional media."
+  },
+  "206": {
+    "name": "Fine Art Photography",
+    "description": "Encompasses photographic works created for artistic expression rather than commercial or documentary purposes, including gallery exhibitions, printmaking techniques, composition, lighting, black-and-white and fine art printing, photographers' portfolios, and critical discussion of conceptual or aesthetic intent."
+  },
+  "207": {
+    "name": "Modern Art",
+    "description": "Spanning roughly the 1860s to the 1970s, this movement encompasses Impressionism, Cubism, Surrealism, Abstract Expressionism, and Fauvism, featuring artists like Picasso, Matisse, and Kandinsky who broke from academic tradition and representational painting."
+  },
+  "208": {
+    "name": "Opera",
+    "description": "Combining vocal performance, orchestral music, drama, and staging, this topic covers composers, librettos, arias, singers, opera houses, productions, and reviews of classical and contemporary operatic works."
+  },
+  "209": {
+    "name": "Theater",
+    "description": "Covers scripted dramatic performance on stage, encompassing playwriting, acting techniques, directing, stagecraft, set and lighting design, rehearsals, theatrical genres, and reviews of plays or productions."
+  },
+  "211": {
+    "name": "Alcoholic Beverages",
+    "description": "Covers beer, wine, spirits, cocktails, and liqueurs, including brewing, distilling, and winemaking processes, tasting notes, pairing suggestions, mixology techniques, and reviews of bars, breweries, distilleries, and vineyards."
+  },
+  "215": {
+    "name": "Barbecues and Grilling",
+    "description": "Covers outdoor cooking over open flame or hot coals, including grills, smokers, and barbecue pits, with topics like charcoal versus gas, wood smoking, marinades, rubs, sauces, grilled meats and vegetables, searing techniques, and backyard cookout gatherings."
+  },
+  "216": {
+    "name": "Cooking",
+    "description": "Covers everyday kitchen techniques, recipes, ingredients, meal preparation methods like sautéing, roasting, braising and stewing, knife skills, kitchen tools and equipment, and general cooking tips for savory dishes."
+  },
+  "217": {
+    "name": "Desserts and Baking",
+    "description": "Recipes and techniques for cakes, cookies, pies, pastries, bread, and confections cover mixing, kneading, proofing, frosting, and oven temperatures, along with ingredient substitutions and troubleshooting texture or rising problems."
+  },
+  "218": {
+    "name": "Dining Out",
+    "description": "Covers restaurant reviews, menus, reservations, tipping etiquette, fast food and takeout, food delivery apps, dining trends, chef profiles, service quality, and choosing places to eat out with friends or family."
+  },
+  "219": {
+    "name": "Food Allergies",
+    "description": "Covers immune reactions to foods such as peanuts, shellfish, dairy, and gluten, discussing symptoms, anaphylaxis, epinephrine use, allergen labeling, cross-contamination avoidance, intolerance testing, and safe substitutions for allergic individuals."
+  },
+  "220": {
+    "name": "Food Movements",
+    "description": "Covers organized approaches to food production, sourcing, and consumption such as slow food, farm-to-table, locavorism, food justice, sustainable agriculture, organic farming, food sovereignty, and anti-GMO or anti-processed-food activism."
+  },
+  "221": {
+    "name": "Healthy Cooking and Eating",
+    "description": "Covers nutrient-dense recipes, meal planning, portion control, low-sodium or low-sugar substitutions, whole grains, lean proteins, and cooking techniques like steaming or roasting that preserve nutrients while reducing fat and calories."
+  },
+  "222": {
+    "name": "Non-Alcoholic Beverages",
+    "description": "Covers coffee, tea, soft drinks, juices, smoothies, sodas, energy drinks, mocktails, sparkling water, and flavored waters, including recipes, brewing methods, taste comparisons, and ingredient sourcing for drinks without alcohol."
+  },
+  "212": {
+    "name": "Vegan Diets",
+    "description": "Covers plant-based eating that excludes all animal products including meat, dairy, eggs, and honey, featuring recipes, ingredient substitutes like tofu and nutritional yeast, meal planning, and nutrient considerations such as B12 and protein sources."
+  },
+  "213": {
+    "name": "Vegetarian Diets",
+    "description": "Covers plant-based eating that still permits eggs, dairy, or honey, including meat-free recipes, protein substitutes like tofu and legumes, meal planning strategies, and nutritional considerations for lacto-ovo, pescatarian, or flexitarian lifestyles."
+  },
+  "214": {
+    "name": "World Cuisines",
+    "description": "Regional and national culinary traditions such as Italian, Mexican, Thai, Indian, Ethiopian, or Japanese cooking, covering signature dishes, ingredients, spices, cooking techniques, and cultural food customs specific to particular countries or ethnic groups."
+  },
+  "224": {
+    "name": "Children's Health",
+    "description": "Covers pediatric growth milestones, childhood vaccinations, common illnesses like ear infections and asthma, developmental screenings, school-age nutrition needs, sleep patterns, and guidance for parents on recognizing symptoms and supporting kids' physical and emotional development."
+  },
+  "225": {
+    "name": "Fitness and Exercise",
+    "description": "Covers workout routines, strength training, cardio, flexibility exercises, and gym or home-based training programs, along with guidance on proper form, injury prevention, and building endurance or muscle."
+  },
+  "228": {
+    "name": "Men's Health",
+    "description": "Covers medical concerns and screenings specific to males, including prostate health, testosterone levels, erectile dysfunction, male fertility, hair loss, and conditions like prostate cancer or low libido."
+  },
+  "229": {
+    "name": "Nutrition",
+    "description": "Covers dietary guidelines, macronutrients, vitamins, minerals, meal planning, food labels, calorie content, hydration, dietary supplements, and how specific foods and eating patterns affect the body's overall health."
+  },
+  "230": {
+    "name": "Senior Health",
+    "description": "Covers aging-related concerns such as arthritis, osteoporosis, dementia, fall prevention, mobility aids, medication management, hearing and vision loss, retirement wellness, and caregiving for older adults living independently or in assisted care."
+  },
+  "231": {
+    "name": "Weight Loss",
+    "description": "Covers strategies for shedding excess body weight, including calorie counting, dieting plans, portion control, weight-loss programs, appetite suppression, metabolism, body mass index tracking, and before-and-after transformation stories."
+  },
+  "232": {
+    "name": "Wellness",
+    "description": "Covers holistic self-care practices such as stress management, sleep hygiene, mindfulness, meditation, work-life balance, emotional resilience, and mental well-being techniques that support overall physical and psychological health beyond diet or exercise regimens."
+  },
+  "238": {
+    "name": "Women's Health",
+    "description": "Covers reproductive and hormonal topics such as menstruation, pregnancy, fertility, menopause, breast and cervical cancer screening, contraception, and conditions like PCOS or endometriosis affecting women across life stages."
+  },
+  "240": {
+    "name": "Antiquing and Antiques",
+    "description": "Covers vintage furniture, porcelain, silverware, jewelry, and decorative objects sought at estate sales, flea markets, and auctions, including authentication, appraisal, provenance research, restoration techniques, and pricing guides for period pieces."
+  },
+  "248": {
+    "name": "Arts and Crafts",
+    "description": "Covers hands-on creative pursuits such as painting, drawing, knitting, sewing, quilting, scrapbooking, woodworking, ceramics, jewelry making, papercraft, and DIY decor, including techniques, materials, tools, and project tutorials."
+  },
+  "258": {
+    "name": "Beekeeping",
+    "description": "Covers hive management, honeybee colonies, queen rearing, swarm capture, honey and wax harvesting, protective gear, apiary equipment, pollination, hive pests and diseases, and beekeeping associations or courses."
+  },
+  "259": {
+    "name": "Birdwatching",
+    "description": "Covers identifying and observing wild birds through binoculars or spotting scopes, tracking species by plumage, song, and behavior, maintaining life lists, visiting sanctuaries or migration hotspots, and using field guides or apps."
+  },
+  "260": {
+    "name": "Cigars",
+    "description": "Covers cigar selection, rolling and tobacco leaf types, humidor storage and aging, pairing with spirits or coffee, cutting and lighting techniques, and reviews of brands, wrappers, and lounges."
+  },
+  "261": {
+    "name": "Collecting",
+    "description": "Covers the hobby of acquiring, organizing, displaying, and appraising items such as coins, stamps, sports cards, comic books, vinyl records, toys, figurines, autographs, and other collectibles, including grading, storage, and trading among enthusiasts."
+  },
+  "264": {
+    "name": "Content Production",
+    "description": "Covers creating videos, podcasts, blogs, photography, and social media posts as a hobby, including equipment like cameras and microphones, editing software, streaming setups, scriptwriting, and publishing techniques for sharing creative work online."
+  },
+  "269": {
+    "name": "Games and Puzzles",
+    "description": "Covers board games, card games, video games, jigsaw and logic puzzles, crosswords, trivia, chess, tabletop role-playing, strategy tips, rules, reviews, and gameplay mechanics for players of all skill levels."
+  },
+  "273": {
+    "name": "Genealogy and Ancestry",
+    "description": "Covers tracing family trees, DNA testing services, archival records, birth and death certificates, immigration documents, census data, ancestral heritage research, family history software, and building pedigree charts across generations."
+  },
+  "241": {
+    "name": "Magic and Illusion",
+    "description": "Covers sleight of hand, card tricks, stage illusions, mentalism, close-up magic, magician techniques and props, magic shows, escapology, and tutorials for practicing and performing conjuring tricks."
+  },
+  "242": {
+    "name": "Model Toys",
+    "description": "Covers building and painting scale models such as plastic kits, model trains, dioramas, miniatures, and static replicas of vehicles, aircraft, ships, or architecture, including techniques like gluing, weathering, and detailing."
+  },
+  "243": {
+    "name": "Musical Instruments",
+    "description": "Covers guitars, pianos, drums, violins, brass and woodwind instruments, along with playing techniques, learning methods, maintenance, tuning, sheet music, gear reviews, and instrument shopping guides."
+  },
+  "244": {
+    "name": "Paranormal Phenomena",
+    "description": "Covers ghosts, hauntings, UFOs, cryptids, psychic abilities, and unexplained phenomena, including investigation techniques, equipment like EMF detectors, eyewitness accounts, and theories debated by enthusiasts and skeptics alike."
+  },
+  "245": {
+    "name": "Radio Control",
+    "description": "Covers building, flying, driving, and racing remote-controlled cars, planes, drones, helicopters, and boats, including transmitters, batteries, motors, kits, and hobbyist events like race meets and flying clubs."
+  },
+  "246": {
+    "name": "Sci-fi and Fantasy",
+    "description": "Covers speculative literature, films, television, and gaming franchises featuring space travel, magic systems, dragons, superheroes, and alien worlds, including fan conventions, cosplay, worldbuilding, novel series, and franchise lore discussions."
+  },
+  "247": {
+    "name": "Workshops and Classes",
+    "description": "Covers instructional sessions, courses, and hands-on lessons for learning new skills or hobbies, including class schedules, curricula, instructor guidance, workshop registration, skill-building exercises, and community learning events across varied subjects."
+  },
+  "275": {
+    "name": "Gardening",
+    "description": "Covers planting, growing, and maintaining flowers, vegetables, herbs, and shrubs, including soil preparation, composting, pruning, watering, pest and weed control, seasonal planting schedules, and tools like trowels, pots, and raised beds."
+  },
+  "279": {
+    "name": "Home Entertaining",
+    "description": "Covers hosting parties and gatherings at home, including tablescaping, party themes, invitations, seating arrangements, appetizer and cocktail menus, holiday dinners, buffet setups, and tips for guest etiquette and ambiance."
+  },
+  "280": {
+    "name": "Home Improvement",
+    "description": "Covers DIY projects, repairs, and upgrades like painting, flooring, fixture installation, plumbing fixes, carpentry, tool selection, and maintenance tasks that improve or restore a home's function without full-scale remodeling or structural construction."
+  },
+  "281": {
+    "name": "Home Security",
+    "description": "Covers alarm systems, surveillance cameras, motion sensors, door and window locks, safes, video doorbells, and monitoring services designed to deter intruders and protect a household's occupants and belongings."
+  },
+  "282": {
+    "name": "Indoor Environmental Quality",
+    "description": "Covers air purification, humidity control, mold and allergen prevention, ventilation systems, air quality monitors, humidifiers, dehumidifiers, HVAC filtration, radon and VOC testing, and strategies for maintaining healthy, comfortable indoor air and moisture levels."
+  },
+  "283": {
+    "name": "Interior Decorating",
+    "description": "Covers arranging furniture, choosing color palettes, wall art, textiles, lighting fixtures, and decorative accessories to style rooms, blending aesthetics like minimalism or farmhouse with personal touches such as throw pillows and curtains."
+  },
+  "284": {
+    "name": "Landscaping",
+    "description": "Covers designing and constructing outdoor spaces through grading, hardscaping with patios, walkways and retaining walls, planting trees and shrubs for structure, installing irrigation systems, and planning yard layouts for drainage, erosion control and curb appeal."
+  },
+  "285": {
+    "name": "Outdoor Decorating",
+    "description": "Covers styling patios, decks, porches, and yards with furniture, string lights, planters, cushions, rugs, seasonal ornaments, water features, and decorative accents that create outdoor ambiance without altering structures or plantings."
+  },
+  "276": {
+    "name": "Remodeling & Construction",
+    "description": "Covers structural additions, renovations, and building projects such as framing, foundations, roofing, permits, contractor hiring, and remodeling kitchens, bathrooms, basements, or entire homes from the ground up."
+  },
+  "277": {
+    "name": "Smart Home",
+    "description": "Covers connected devices and systems for controlling lighting, thermostats, appliances, and voice assistants, including smart plugs, hubs, automation routines, app integrations, and compatibility with platforms like Alexa, Google Home, and HomeKit."
+  },
+  "287": {
+    "name": "Diseases and Conditions",
+    "description": "Covers causes, symptoms, risk factors, and progression of specific illnesses and disorders such as diabetes, cancer, infections, allergies, and chronic conditions, including how they affect the body and typical prognosis."
+  },
+  "319": {
+    "name": "Medical Tests",
+    "description": "Diagnostic procedures such as blood panels, imaging scans, biopsies, screenings, and genetic testing are covered, including how they're performed, what results and reference ranges mean, and their accuracy or risks."
+  },
+  "320": {
+    "name": "Pharmaceutical Drugs",
+    "description": "Covers prescription and over-the-counter medications, including drug classes, dosages, mechanisms of action, side effects, interactions, generic versus brand formulations, and regulatory approval processes for treating illness."
+  },
+  "321": {
+    "name": "Surgery",
+    "description": "Covers surgical procedures, operations, and interventions such as appendectomies, transplants, joint replacements, and minimally invasive techniques, along with pre-operative preparation, anesthesia, surgical risks, and post-operative recovery guidance."
+  },
+  "322": {
+    "name": "Vaccines",
+    "description": "Covers immunization schedules, vaccine types and ingredients, how they trigger immune protection against specific pathogens, administration methods, booster timing, side effects, efficacy rates, and vaccination guidelines for children, adults, and travelers."
+  },
+  "392": {
+    "name": "Consumer Banking",
+    "description": "Covers checking and savings accounts, ATMs, debit cards, online and mobile banking apps, overdraft fees, direct deposit, wire transfers, bank statements, minimum balance requirements, and choosing between credit unions and traditional banks."
+  },
+  "393": {
+    "name": "Financial Assistance",
+    "description": "Covers programs and resources that help individuals cover expenses or recover from hardship, including government benefits, grants, charitable aid, emergency relief funds, unemployment assistance, and nonprofit support services for housing, utilities, or medical bills."
+  },
+  "396": {
+    "name": "Financial Planning",
+    "description": "Covers setting financial goals, budgeting strategies, net worth tracking, cash flow management, emergency funds, life-stage planning, and working with financial advisors to create comprehensive money management strategies beyond specific investment, tax, or retirement decisions."
+  },
+  "397": {
+    "name": "Frugal Living",
+    "description": "Covers strategies for cutting everyday expenses through couponing, DIY projects, meal planning, minimalism, thrift shopping, and bargain hunting, emphasizing practical habits that reduce spending rather than growing income, investments, or savings accounts."
+  },
+  "398": {
+    "name": "Insurance",
+    "description": "Covers policies that protect against financial loss, including health, life, auto, home, and disability coverage, along with premiums, deductibles, claims, underwriting, and choosing the right coverage or provider."
+  },
+  "405": {
+    "name": "Personal Debt",
+    "description": "Covers strategies for managing credit card balances, student loans, mortgages, and other borrowed money, including consolidation, refinancing, repayment plans, negotiating with creditors, and understanding interest rates and credit scores."
+  },
+  "410": {
+    "name": "Personal Investing",
+    "description": "Covers strategies and vehicles individuals use to grow wealth outside retirement accounts, including stocks, bonds, mutual funds, ETFs, real estate, brokerage accounts, portfolio diversification, dividend income, and risk tolerance assessment."
+  },
+  "415": {
+    "name": "Personal Taxes",
+    "description": "Covers filing individual income tax returns, deductions, credits, tax brackets, withholding, deadlines, audits, and strategies for minimizing what one owes to federal, state, or local tax authorities."
+  },
+  "416": {
+    "name": "Retirement Planning",
+    "description": "Covers strategies for building income after leaving the workforce, including 401(k) and IRA contributions, pension decisions, Social Security claiming ages, required minimum distributions, and calculating savings targets for a desired retirement lifestyle."
+  },
+  "423": {
+    "name": "Birds",
+    "description": "Covers the care, feeding, housing, and behavior of companion birds such as parrots, canaries, and finches, including cage setup, wing clipping, diet, training, and species-specific health concerns."
+  },
+  "424": {
+    "name": "Cats",
+    "description": "Covers feline behavior, breeds, litter box training, grooming, scratching habits, indoor enrichment, nutrition, and common health issues like hairballs, obesity, and dental disease in domestic cats."
+  },
+  "425": {
+    "name": "Dogs",
+    "description": "Covers dog breeds, puppy training, feeding, grooming, exercise, and behavior, along with leashes, crates, chew toys, and everyday care for domesticated canine companions living in the home."
+  },
+  "426": {
+    "name": "Fish and Aquariums",
+    "description": "Covers freshwater and saltwater aquarium setup, tank cycling, filtration, water chemistry, and equipment like heaters and lighting, plus fish species care, feeding, breeding, tank mates, and aquatic plant maintenance."
+  },
+  "427": {
+    "name": "Large Animals",
+    "description": "Covers care, feeding, housing, and training of large domesticated companion animals such as horses, donkeys, pigs, goats, llamas, and alpacas, including barn or pasture management, grooming, and equipment needs."
+  },
+  "428": {
+    "name": "Pet Adoptions",
+    "description": "Covers finding, evaluating, and welcoming animals from shelters, rescues, or breeders into a home, including application processes, adoption fees, fostering programs, and tips for choosing the right companion animal."
+  },
+  "429": {
+    "name": "Reptiles",
+    "description": "Covers the care, feeding, habitat setup, and behavior of pet reptiles such as snakes, lizards, turtles, and geckos, including terrarium heating, lighting, humidity, and species-specific handling guidance."
+  },
+  "430": {
+    "name": "Veterinary Medicine",
+    "description": "Covers diagnosis and treatment of pet illnesses, injuries, and chronic conditions, including vaccinations, surgeries, medications, parasite control, dental care, emergency care, and choosing or evaluating a veterinarian."
+  },
+  "8YPBBL": {
+    "name": "Civic affairs",
+    "description": "Covers the day-to-day workings of government and community institutions, including public meetings, municipal administration, civic duties, local officials, town halls, community organizing, and citizen engagement outside of campaigns or policy debates."
+  },
+  "387": {
+    "name": "Elections",
+    "description": "Covers campaigns, candidates, voting procedures, ballots, polling data, election results, primaries, debates, endorsements, and electoral systems like gerrymandering, redistricting, and voter registration requirements."
+  },
+  "388": {
+    "name": "Political Issues & Policy",
+    "description": "Covers debates over abortion, immigration, healthcare, taxation, gun control, climate regulation, criminal justice reform, and other legislative or policy disputes, including proposed bills, government programs, and ideological arguments for or against specific measures."
+  },
+  "433": {
+    "name": "Celebrity Deaths",
+    "description": "Coverage of the passing of actors, musicians, and other public figures, including cause of death, tributes from fans and colleagues, memorial services, obituaries, and the legacy left behind in film, music, or television."
+  },
+  "434": {
+    "name": "Celebrity Families",
+    "description": "Covers celebrities' spouses, children, parents, and siblings, including family milestones like weddings, adoptions, custody arrangements, sibling rivalries, nepotism debates, and multi-generational dynasties in entertainment, sports, or royalty."
+  },
+  "435": {
+    "name": "Celebrity Homes",
+    "description": "Coverage of mansions, estates, and real estate transactions belonging to famous actors, musicians, and athletes, including property tours, listing prices, architectural details, interior design choices, and neighborhood locations, plus news of buying, selling, or renovating these residences."
+  },
+  "436": {
+    "name": "Celebrity Pregnancy",
+    "description": "A famous figure's pregnancy announcement, baby bump sightings, due date speculation, gender reveal, birth details, and chosen baby name, often accompanied by paparazzi photos and social media confirmation posts."
+  },
+  "437": {
+    "name": "Celebrity Relationships",
+    "description": "Coverage of romantic relationships between famous people, including dating rumors, engagements, breakups, divorces, public displays of affection, love triangles, and reunions, often tracked through interviews, social media posts, and paparazzi sightings."
+  },
+  "438": {
+    "name": "Celebrity Scandal",
+    "description": "Covers controversies involving public figures such as leaked footage, cheating allegations, arrests, lawsuits, public feuds, offensive remarks, and career fallout, including apologies, fan backlash, and media investigations into the incident."
+  },
+  "439": {
+    "name": "Celebrity Style",
+    "description": "Covers red carpet looks, fashion choices, outfit breakdowns, beauty trends, hairstyles, and personal style evolution of famous actors, musicians, and influencers, including designer collaborations and street style spotted at public events."
+  },
+  "440": {
+    "name": "Humor and Satire",
+    "description": "Covers comedic takes, parody, memes, satirical commentary, sketch comedy, joke articles, and irreverent spoofs poking fun at trends, public figures, and everyday absurdities rather than reporting factual celebrity news."
+  },
+  "454": {
+    "name": "Agnosticism",
+    "description": "Explores the position that the existence of God or gods is fundamentally unknowable or unproven, covering arguments about epistemic uncertainty, skepticism toward religious claims, and the distinction between agnosticism and atheism."
+  },
+  "456": {
+    "name": "Astrology",
+    "description": "Explores zodiac signs, horoscopes, birth charts, planetary movements, and celestial influences on personality and destiny, covering practices like tarot pairing, retrogrades, moon phases, and compatibility readings between star signs."
+  },
+  "457": {
+    "name": "Atheism",
+    "description": "Covers the rejection of belief in gods or the supernatural, exploring secular humanism, skepticism toward religious claims, arguments against theism, and the personal or philosophical reasoning behind living without religious faith."
+  },
+  "458": {
+    "name": "Buddhism",
+    "description": "Covers teachings of the Buddha, karma, rebirth, and the Four Noble Truths, along with meditation practices, Zen and Theravada or Mahayana traditions, monastic life, and sacred texts like the Tripitaka."
+  },
+  "459": {
+    "name": "Christianity",
+    "description": "Covers beliefs and practices centered on Jesus Christ, including denominations like Catholicism, Protestantism, and Orthodoxy, along with the Bible, worship services, sacraments, prayer, saints, and church history."
+  },
+  "460": {
+    "name": "Hinduism",
+    "description": "Explores deities like Vishnu, Shiva, and Durga, sacred texts such as the Vedas, Upanishads, and Bhagavad Gita, along with concepts of karma, dharma, moksha, reincarnation, yoga practices, temple rituals, festivals like Diwali and Holi, and the caste system's historical role."
+  },
+  "461": {
+    "name": "Islam",
+    "description": "Covers the Quran, the Five Pillars, the Prophet Muhammad's teachings, Sunni and Shia traditions, mosque worship, Ramadan, Hajj pilgrimage, halal practices, and Islamic law and jurisprudence."
+  },
+  "462": {
+    "name": "Judaism",
+    "description": "Covers Jewish beliefs, practices, and identity, including Torah study, the Talmud, synagogue worship, holidays like Passover and Yom Kippur, kosher dietary laws, Hebrew prayer, and denominations such as Orthodox, Reform, and Conservative Judaism."
+  },
+  "463": {
+    "name": "Sikhism",
+    "description": "Covers the teachings of the Guru Granth Sahib, the Ten Gurus, the Khalsa and Five Ks, practices like langar and seva, gurdwara worship, and concepts such as Waheguru, karma, and reincarnation within Sikh tradition."
+  },
+  "455": {
+    "name": "Spirituality",
+    "description": "Explores personal inner growth, meditation, mindfulness, energy healing, chakras, meaning-making, and connection to something greater beyond organized doctrine, covering practices like yoga, journaling, crystals, and rituals for self-discovery outside established religious traditions."
+  },
+  "465": {
+    "name": "Biological Sciences",
+    "description": "Explores the structure, function, and behavior of living organisms, covering topics like cell biology, physiology, anatomy, microbiology, botany, zoology, evolution, ecology, and biochemistry within organisms rather than their surrounding habitats."
+  },
+  "466": {
+    "name": "Chemistry",
+    "description": "Covers atoms, molecules, chemical bonds, reactions, elements and the periodic table, acids and bases, compounds, laboratory experiments, and industrial or organic chemical processes."
+  },
+  "467": {
+    "name": "Environment",
+    "description": "Covers ecosystems, climate change, pollution, conservation, biodiversity loss, renewable energy, sustainability efforts, natural resource management, and human impacts on air, water, and land quality."
+  },
+  "468": {
+    "name": "Genetics",
+    "description": "Covers heredity, DNA and gene structure, mutations, chromosomes, genetic engineering, CRISPR gene editing, inherited diseases, genomics research, cloning, and hereditary traits passed between generations of organisms."
+  },
+  "469": {
+    "name": "Geography",
+    "description": "Covers the study of Earth's surface features, landscapes, countries, regions, borders, population distribution, urbanization, cartography, climate zones, and the spatial relationships between human societies and their physical surroundings."
+  },
+  "470": {
+    "name": "Geology",
+    "description": "Covers Earth's physical structure and history through rocks, minerals, plate tectonics, volcanoes, earthquakes, fossils, sediment layers, erosion, mineral formation, and the geological processes that shape landscapes over millions of years."
+  },
+  "471": {
+    "name": "Physics",
+    "description": "Explores matter, energy, forces, motion, and their interactions, covering mechanics, thermodynamics, electromagnetism, quantum theory, relativity, particle physics, and related experiments, laws, and theoretical models."
+  },
+  "472": {
+    "name": "Space and Astronomy",
+    "description": "Covers celestial bodies, galaxies, stars, planets, moons, black holes, and cosmic phenomena, along with space missions, telescopes, rocket launches, satellites, astronauts, and discoveries about the universe's origin and structure."
+  },
+  "390": {
+    "name": "Weather",
+    "description": "Covers atmospheric phenomena like storms, precipitation, temperature, humidity, and wind patterns, including forecasting techniques, meteorological instruments, cloud formation, seasonal patterns, and severe weather events such as hurricanes, tornadoes, and blizzards."
+  },
+  "484": {
+    "name": "American Football",
+    "description": "Covers gridiron football leagues and teams like the NFL, quarterbacks, touchdowns, field goals, playoffs, the Super Bowl, draft picks, and coaching strategies on offense and defense."
+  },
+  "507": {
+    "name": "Australian Rules Football",
+    "description": "Covers the AFL and grassroots leagues on the oval pitch, featuring marks, handballs, goalkicking, behinds, the Brownlow Medal, and finals series culminating in the Grand Final."
+  },
+  "518": {
+    "name": "Auto Racing",
+    "description": "Covers motorsport competitions like Formula 1, NASCAR, IndyCar, rally, and endurance races, including drivers, teams, circuits, pit stops, qualifying sessions, race standings, and vehicle engineering."
+  },
+  "534": {
+    "name": "Badminton",
+    "description": "Covers competitive racket sport played with shuttlecocks on indoor courts, including singles and doubles matches, smashes, drop shots, net play, rallies, tournaments like the BWF World Championships, and player rankings."
+  },
+  "545": {
+    "name": "Baseball",
+    "description": "Covers professional and amateur baseball, including MLB games, pitching and batting statistics, ballpark events, player trades, minor league development, and coverage of leagues like Nippon Professional Baseball or Korean Baseball Organization."
+  },
+  "547": {
+    "name": "Basketball",
+    "description": "Covers professional and amateur basketball leagues, teams, players, coaches, games, drafts, standings, statistics, dunks, dribbling, three-pointers, playoffs, and championships like the NBA Finals or March Madness."
+  },
+  "548": {
+    "name": "Beach Volleyball",
+    "description": "Covers two-player-per-side matches played on sand courts, featuring digs, sets, spikes, blocks, serves, tournaments like the AVP and FIVB World Tour, and Olympic beach competition."
+  },
+  "549": {
+    "name": "Bodybuilding",
+    "description": "Covers competitive muscle-building through resistance training, posing routines, and physique contests like Mr. Olympia, alongside bulking and cutting diets, supplementation, steroid controversies, and gym culture among athletes and enthusiasts."
+  },
+  "550": {
+    "name": "Bowling",
+    "description": "Covers ten-pin and duckpin bowling with topics like alley lanes, pins, gutters, strikes and spares, oil patterns, ball weights and drilling, league play, PBA tournaments, and scoring techniques."
+  },
+  "485": {
+    "name": "Boxing",
+    "description": "Covers professional and amateur bouts involving punches, weight classes, championship belts, knockouts, judges' scorecards, promoters, sparring, and training regimens for fighters competing in the ring."
+  },
+  "486": {
+    "name": "Cheerleading",
+    "description": "Covers routines combining stunts, tumbling, jumps, dance, and crowd-leading chants performed by squads at sporting events or in competitive tryouts, tryout tips, uniforms, and championship results."
+  },
+  "487": {
+    "name": "College Sports",
+    "description": "Covers university and college athletic programs across multiple sports, including conference standings, recruiting, championships like the NCAA tournaments, scholarships, coaching changes, and student-athlete eligibility rules."
+  },
+  "491": {
+    "name": "Cricket",
+    "description": "Covers bat-and-ball matches like Test, One Day International, and T20 formats, featuring bowlers, batsmen, wickets, overs, innings, pitches, and tournaments such as the IPL, Ashes, and World Cup."
+  },
+  "492": {
+    "name": "Cycling",
+    "description": "Covers road racing, mountain biking, track cycling, and BMX, including races like the Tour de France, cyclist rankings, team tactics, bike equipment, and training regimens."
+  },
+  "493": {
+    "name": "Darts",
+    "description": "Covers competitive dart throwing at a bristle or electronic dartboard, including oche distance rules, scoring formats like 501 and cricket, tournaments such as the PDC World Championship, and player rankings."
+  },
+  "494": {
+    "name": "Disabled Sports",
+    "description": "Covers athletic competitions and training adapted for physical, visual, or intellectual impairments, including wheelchair basketball, sitting volleyball, blind soccer, para-swimming, Paralympic events, adaptive equipment, and classification systems for disabled athletes."
+  },
+  "495": {
+    "name": "Diving",
+    "description": "Covers competitive springboard and platform diving, including twists, somersaults, degree of difficulty scoring, judging criteria, diving pools, championships, and Olympic events like synchronized diving and cliff diving."
+  },
+  "496": {
+    "name": "Equine Sports",
+    "description": "Covers competitive activities involving horses and riders, including dressage, show jumping, eventing, thoroughbred and harness horse racing, polo, and equestrian training, breeding, and stable management."
+  },
+  "498": {
+    "name": "Extreme Sports",
+    "description": "Covers high-risk, adrenaline-driven pursuits like skydiving, BASE jumping, rock climbing, skateboarding, BMX, surfing, snowboarding, parkour, whitewater kayaking, and wingsuit flying, emphasizing gear, stunts, and personal risk."
+  },
+  "508": {
+    "name": "Fantasy Sports",
+    "description": "Covers drafting virtual rosters of real athletes, managing salary-cap or keeper leagues, tracking weekly points, waiver-wire pickups, trade analysis, and league standings across sports like football, baseball, basketball, and soccer."
+  },
+  "509": {
+    "name": "Field Hockey",
+    "description": "Covers matches played with curved sticks and a hard ball on grass or turf pitches, including penalty corners, dribbling technique, international tournaments, and league standings for men's and women's teams."
+  },
+  "510": {
+    "name": "Figure Skating",
+    "description": "Covers competitive ice skating disciplines like singles, pairs, ice dance, and synchronized skating, including jumps, spins, choreography, costumes, scoring systems, championships, and skaters' training routines."
+  },
+  "511": {
+    "name": "Fishing Sports",
+    "description": "Covers competitive and recreational angling such as bass fishing tournaments, fly fishing, saltwater and freshwater techniques, tackle and lure gear, casting skills, bait selection, fishing boats, and professional angling circuits like the Bassmaster tour."
+  },
+  "512": {
+    "name": "Golf",
+    "description": "Covers tournaments like the Masters, PGA Tour, and Ryder Cup, along with clubs, swings, putting greens, fairways, handicaps, caddies, and professional players such as Tiger Woods."
+  },
+  "513": {
+    "name": "Gymnastics",
+    "description": "Covers artistic and rhythmic routines on apparatus like the balance beam, vault, uneven bars, rings, and floor exercise, including scoring, technique, competitions, and elite athletes' training."
+  },
+  "514": {
+    "name": "Hunting and Shooting",
+    "description": "Covers firearms and archery marksmanship, game hunting expeditions, rifles, shotguns, bows, ammunition, hunting licenses, clay pigeon and skeet shooting competitions, wildlife tracking, and gun safety techniques."
+  },
+  "515": {
+    "name": "Ice Hockey",
+    "description": "Covers skaters shooting a puck into a net with sticks on a rink, including NHL games, power plays, penalty boxes, goaltenders, body checking, face-offs, and Stanley Cup playoffs."
+  },
+  "516": {
+    "name": "Inline Skating",
+    "description": "Covers rollerblading and inline skating disciplines such as speed skating, aggressive street and park skating, roller hockey, and slalom, including gear like inline skates, wheels, and bearings."
+  },
+  "517": {
+    "name": "Lacrosse",
+    "description": "Covers the stick-and-ball team sport played with a netted crosse to catch, carry, and shoot a ball into a goal, including box lacrosse, NCAA and professional leagues, faceoffs, and player equipment like helmets and gloves."
+  },
+  "520": {
+    "name": "Martial Arts",
+    "description": "Covers combat disciplines such as karate, judo, taekwondo, kung fu, jiu-jitsu, MMA, and aikido, including belt rankings, sparring techniques, dojo training, tournaments, self-defense practices, and grappling or striking styles."
+  },
+  "521": {
+    "name": "Olympic Sports",
+    "description": "Covers events like track and field, weightlifting, archery, fencing, handball, judo, modern pentathlon, and triathlon within Summer and Winter Games, including medal standings, opening ceremonies, and athlete qualification for the Olympics."
+  },
+  "524": {
+    "name": "Poker and Professional Gambling",
+    "description": "Covers Texas Hold'em and other card game tournaments, World Series of Poker events, betting strategy, bluffing tactics, bankroll management, casino table games, and profiles of professional players competing for cash prizes and rankings."
+  },
+  "525": {
+    "name": "Rodeo",
+    "description": "Covers competitive events like bull riding, bronc riding, calf roping, barrel racing, and steer wrestling, along with rodeo circuits, cowboys, arenas, livestock handling, and Western-style ranching culture."
+  },
+  "526": {
+    "name": "Rowing",
+    "description": "Covers competitive and recreational boat racing on water, including sculling and sweep-oar events, single and team shells, regattas, coxswains, ergometer training, stroke technique, and collegiate or Olympic crew competitions."
+  },
+  "527": {
+    "name": "Rugby",
+    "description": "Covers rugby union and rugby league matches, tries, scrums, lineouts, tackles, conversions, tournaments like the Six Nations and Rugby World Cup, club competitions, and player transfers or injuries."
+  },
+  "530": {
+    "name": "Sailing",
+    "description": "Covers competitive and recreational boat racing on water, including regattas, yacht clubs, dinghy and keelboat classes, America's Cup events, wind tactics, rigging, and crew roles like helmsman and tactician."
+  },
+  "531": {
+    "name": "Skiing",
+    "description": "Covers alpine and cross-country skiing, ski jumping, slalom, downhill racing, moguls, freestyle skiing, ski resorts, equipment like skis and poles, snow conditions, and competitive events such as World Cup races and Olympic ski disciplines."
+  },
+  "532": {
+    "name": "Snooker/Pool/Billiards",
+    "description": "Covers cue sports played on baize-covered tables with cushions, pockets, and racked balls, including breaks, potting, cushion shots, cue technique, and tournaments like the World Snooker Championship or nine-ball pool events."
+  },
+  "533": {
+    "name": "Soccer",
+    "description": "Covers matches, leagues, and tournaments involving eleven-a-side teams kicking a ball into goals, including club competitions, national teams, transfers, tactics, managers, and star players worldwide."
+  },
+  "535": {
+    "name": "Softball",
+    "description": "Covers fastpitch and slowpitch softball games, including pitching techniques, batting lineups, base running, college and Olympic tournaments, and player statistics from leagues like NPF and softball World Cup competitions."
+  },
+  "536": {
+    "name": "Squash",
+    "description": "Covers the racket sport played in a four-walled court with a small rubber ball, including PSA World Tour rankings, tournaments, rules, scoring, technique, equipment, and notable players."
+  },
+  "537": {
+    "name": "Swimming",
+    "description": "Covers competitive and recreational pool and open-water racing, strokes like freestyle, backstroke, breaststroke, and butterfly, relay events, training techniques, swimwear, meets, and elite athletes such as Olympic swimmers."
+  },
+  "538": {
+    "name": "Table Tennis",
+    "description": "Covers competitive play with paddles and a lightweight ball on a small net-divided table, including topspin and spin serves, ITTF rankings, world championships, Olympic singles and doubles events, and equipment like rubber blades."
+  },
+  "539": {
+    "name": "Tennis",
+    "description": "Covers professional and amateur tennis, including Grand Slam tournaments like Wimbledon and the US Open, player rankings, singles and doubles matches, serves, rallies, tiebreaks, and racket equipment."
+  },
+  "540": {
+    "name": "Track and Field",
+    "description": "Covers sprinting, distance running, hurdles, relays, jumping events like long jump and high jump, throwing events such as shot put and javelin, decathlon, and stadium meets and championships."
+  },
+  "541": {
+    "name": "Volleyball",
+    "description": "Covers indoor volleyball matches, leagues, and tournaments played on hardwood courts with six-player teams, featuring serves, spikes, blocks, sets, digs, and rotations across professional, collegiate, and Olympic competitions."
+  },
+  "542": {
+    "name": "Walking",
+    "description": "Covers competitive and recreational walking activities such as racewalking technique and rules, hiking trails, power walking for fitness, walking clubs, pedometer challenges, and long-distance walking events like marathons and pilgrimages."
+  },
+  "543": {
+    "name": "Water Polo",
+    "description": "Covers the pool-based team sport where swimmers tread water while passing, shooting, and defending a floating ball toward goals, including techniques like eggbeater kicks, fouls, exclusions, and international tournaments such as FINA championships."
+  },
+  "544": {
+    "name": "Weightlifting",
+    "description": "Covers competitive lifting disciplines like the snatch and clean and jerk, powerlifting movements such as squat, bench press, and deadlift, plus training programs, meets, weight classes, and athlete rankings."
+  },
+  "546": {
+    "name": "Wrestling",
+    "description": "Covers amateur and professional grappling disciplines like freestyle, Greco-Roman, and folkstyle wrestling, plus takedowns, pins, weight classes, tournaments, and scripted promotions such as WWE storylines and championship matches."
+  },
+  "553": {
+    "name": "Beauty",
+    "description": "Covers cosmetics, skincare routines, makeup techniques, hair styling, fragrance, and beauty product reviews, including tutorials, ingredient trends, and celebrity beauty looks that inspire everyday application."
+  },
+  "574": {
+    "name": "Body Art",
+    "description": "Covers tattoos, piercings, henna, body painting, and scarification, including design ideas, aftercare, artist profiles, symbolism, and studio culture, distinct from clothing trends or skincare routines."
+  },
+  "576": {
+    "name": "Designer Clothing",
+    "description": "Covers luxury labels and ready-to-wear collections from named fashion houses, including runway-to-retail garments, seasonal drops, signature logos, craftsmanship details, and pricing tied to specific brands and designers."
+  },
+  "577": {
+    "name": "Fashion Trends",
+    "description": "Covers seasonal color palettes, silhouettes, fabrics, and must-have pieces gaining popularity across runways and retail, including trend forecasting, viral styles, capsule wardrobe ideas, and how emerging aesthetics move from catwalks into everyday closets."
+  },
+  "578": {
+    "name": "High Fashion",
+    "description": "Runway presentations, couture houses, and designer collections from Paris, Milan, and New York fashion weeks, covering avant-garde silhouettes, luxury craftsmanship, and the creative visions of leading designers shaping elite fashion culture."
+  },
+  "579": {
+    "name": "Men's Fashion",
+    "description": "Covers clothing, grooming choices, and style advice tailored to men, including suits, casualwear, footwear, accessories, seasonal wardrobe staples, and outfit-building tips for work, formal occasions, and everyday life."
+  },
+  "590": {
+    "name": "Personal Care",
+    "description": "Covers grooming routines and hygiene products such as skincare cleansers, deodorants, shaving tools, haircare treatments, oral care, and bath essentials, focusing on daily maintenance rituals rather than cosmetic makeup application or clothing styling choices."
+  },
+  "595": {
+    "name": "Street Style",
+    "description": "Featuring candid photography of everyday people's outfits spotted on city sidewalks and outside fashion shows, this covers personal styling choices, layering, sneakers, statement accessories, and how urban subcultures influence everyday wardrobe combinations."
+  },
+  "560": {
+    "name": "Women's Fashion",
+    "description": "Covers clothing, accessories, footwear, and styling choices marketed to women, including dresses, tops, skirts, outerwear, handbags, jewelry, and sizing or fit guidance for everyday and occasion wear."
+  },
+  "597": {
+    "name": "Artificial Intelligence",
+    "description": "Covers machine learning, neural networks, natural language processing, generative models, chatbots, computer vision, algorithmic decision-making, AI ethics and bias, training data, and applications like autonomous reasoning or predictive analytics."
+  },
+  "598": {
+    "name": "Augmented Reality",
+    "description": "Covers overlaying digital images, text, and interactive elements onto real-world views through devices like smartphones, tablets, or headsets, including AR apps, markerless tracking, SLAM technology, and AR development frameworks like ARKit or ARCore."
+  },
+  "599": {
+    "name": "Computing",
+    "description": "Covers hardware architecture, operating systems, data storage, networking fundamentals, cloud infrastructure, computing history, and general concepts like processors, memory, algorithms, and computational theory outside dedicated coding or security contexts."
+  },
+  "602": {
+    "name": "Software",
+    "description": "Covers applications, operating systems, productivity suites, mobile apps, updates, licensing, and reviews of programs used for tasks like word processing, editing, design, or collaboration, excluding coding practices or hardware specifications."
+  },
+  "618": {
+    "name": "Computer Security",
+    "description": "Covers protecting systems, networks, and data from malware, phishing, ransomware, hacking, and breaches, including firewalls, encryption, authentication, vulnerability patching, and best practices for privacy and threat prevention."
+  },
+  "619": {
+    "name": "Internet",
+    "description": "Covers browsers, search engines, websites, email, social media platforms, connectivity, broadband and Wi-Fi access, online privacy basics, web hosting, domain names, and internet culture or trends."
+  },
+  "631": {
+    "name": "Programming",
+    "description": "Covers writing, debugging, and maintaining source code in languages like Python, Java, C++, and JavaScript, including algorithms, data structures, version control, APIs, frameworks, and software development methodologies."
+  },
+  "632": {
+    "name": "Consumer Electronics",
+    "description": "Covers smartphones, laptops, televisions, cameras, headphones, wearables, smart home gadgets, and home appliances, including product reviews, specifications, buying guides, and comparisons of features, pricing, and brands."
+  },
+  "638": {
+    "name": "Robotics",
+    "description": "Covers the design, construction, and operation of robots and automated machines, including actuators, sensors, motion control, industrial automation, drones, humanoid robots, and mechanical engineering behind robotic systems."
+  },
+  "639": {
+    "name": "Virtual Reality",
+    "description": "Covers immersive headsets, motion controllers, and simulated 3D environments, including gaming, training simulations, virtual worlds, haptic feedback devices, and platforms like Oculus, SteamVR, and metaverse applications distinct from overlay-based augmented reality."
+  },
+  "655": {
+    "name": "Travel Locations",
+    "description": "Covers specific destinations such as cities, countries, regions, landmarks, national parks, and attractions, detailing their geography, culture, sights, and local highlights for travelers considering where to visit."
+  },
+  "663": {
+    "name": "Travel Preparation and Advice",
+    "description": "Covers practical guidance for organizing a trip, including packing lists, visa and passport requirements, travel insurance, budgeting, health precautions, itinerary planning, currency exchange, and tips for navigating airports or borders."
+  },
+  "664": {
+    "name": "Travel Type",
+    "description": "Covers distinct styles and purposes of travel such as solo backpacking, family vacations, luxury getaways, adventure expeditions, ecotourism, cruises, road trips, business travel, and budget travel, categorized by traveler motivation and experience rather than destination."
+  },
+  "681": {
+    "name": "Console Games",
+    "description": "Covers games designed for platforms like PlayStation, Xbox, and Nintendo Switch, including console-specific hardware, controllers, exclusives, backward compatibility, digital storefronts, and release news for these dedicated gaming systems."
+  },
+  "682": {
+    "name": "eSports",
+    "description": "Competitive tournament play centers on games like League of Legends, Dota 2, CS:GO, and Valorant, covering professional teams, player rosters, sponsorships, prize pools, casters, and championship brackets."
+  },
+  "683": {
+    "name": "Mobile Games",
+    "description": "Covers smartphone and tablet titles played via app stores like Google Play and the App Store, including touch-based mechanics, freemium monetization, gacha systems, casual puzzle apps, and mobile-specific hits like Candy Crush or Genshin Impact."
+  },
+  "684": {
+    "name": "PC Games",
+    "description": "Covers games designed for personal computers, including system requirements, graphics settings, storefronts like Steam and Epic Games Store, mods, patches, and hardware compatibility discussions among Windows, Mac, and Linux users."
+  },
+  "685": {
+    "name": "Video Game Genres",
+    "description": "Covers classifications like action, adventure, role-playing, strategy, simulation, puzzle, sports, fighting, shooter, and platformer games, discussing their defining mechanics, conventions, and notable titles across categories."
+  },
+  "x-mathematics": {
+    "name": "Mathematics",
+    "description": "Covers numbers, equations, proofs, algebra, geometry, calculus, statistics, probability, and logic, including theorems, formulas, mathematical modeling, and problem-solving techniques used across pure and applied disciplines."
+  }
+}

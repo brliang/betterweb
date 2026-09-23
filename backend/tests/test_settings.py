@@ -26,6 +26,8 @@ def test_defaults_match_plan() -> None:
     assert s.recency_half_life_days == 7
     assert s.max_per_domain_per_page == 2
     assert s.provider_monthly_spend_cap_usd == 40
+    assert s.embedding_model == "qwen/qwen3-embedding-8b"
+    assert s.openrouter_api_key is None
 
 
 def test_env_overrides(monkeypatch: pytest.MonkeyPatch) -> None:

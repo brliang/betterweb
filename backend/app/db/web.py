@@ -123,12 +123,14 @@ class Topic(Base):
 
     id: Mapped[int] = mapped_column(sa.BigInteger, sa.Identity(), primary_key=True)
     external_id: Mapped[str] = mapped_column(unique=True)
-    """The IAB taxonomy ID."""
+    """The IAB taxonomy ID, or an `x-` ID for topics the adaptation adds."""
     name: Mapped[str]
     parent_id: Mapped[int | None] = mapped_column(sa.ForeignKey("web.topics.id"), index=True)
     tier: Mapped[int] = mapped_column(sa.SmallInteger)
     description: Mapped[str | None]
     embedding: Mapped[Embedding | None]
+    embedding_model: Mapped[str | None]
+    """The model that produced `embedding`; a different configured model means re-embedding."""
 
 
 class DocumentTopic(Base):

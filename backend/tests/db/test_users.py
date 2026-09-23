@@ -33,6 +33,7 @@ from app.enums import (
     Surface,
 )
 from app.users import delete_user
+from tests.fakes import unit_vector
 
 pytestmark = pytest.mark.anyio
 
@@ -98,7 +99,7 @@ async def add_user_with_data(
             ),
             UserPpr(user_id=user.id, document_id=document.id, score=0.1, cycle_id=cycle.id),
             UserProfileVector(
-                user_id=user.id, kind=ProfileVectorKind.INTEREST, vector=[0.1, 0.2, 0.3]
+                user_id=user.id, kind=ProfileVectorKind.INTEREST, vector=unit_vector(email)
             ),
             Summary(user_id=user.id, document_id=document.id, model="fake", text="Because."),
         ]

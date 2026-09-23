@@ -34,8 +34,8 @@ This document is the source of truth for implementation. Work through V0 milesto
 | HTML extraction | trafilatura |
 | PDF extraction | pypdf (or pdfminer.six) |
 | Graph math | scipy.sparse (power iteration) |
-| Embeddings | Hosted via HuggingFace Inference (behind `EmbeddingProvider` interface) |
-| LLM summaries | Hosted via OpenRouter (behind `LLMProvider` interface) |
+| Embeddings | Qwen3-Embedding-8B (open weights, Apache-2.0) via OpenRouter, truncated to 1024 dims (behind `EmbeddingProvider` interface) |
+| LLM summaries | Hosted via OpenRouter, model configurable (behind `LLMProvider` interface) |
 | Frontend | React 19 + TypeScript + Vite, TanStack Query, React Compiler |
 | Styling | Tailwind CSS v4 |
 | Typed client | FastAPI's generated OpenAPI schema → **orval** → TypeScript client + TanStack Query hooks |
@@ -236,8 +236,8 @@ priority(url) = Σ_{p ∈ known parents} global_pr(p) / outdegree(p)  +  λ · d
 
 ### 6.4 Embeddings and taxonomy
 
-- **`EmbeddingProvider` interface**: `embed(texts: list[str]) -> list[vector]`, plus model name and dimension.
-  - V0 implementation: HuggingFace Inference.
+- **`EmbeddingProvider` interface**: `embed_documents(texts) -> list[vector]` and `embed_queries(texts, instruction) -> list[vector]` (Qwen3 prefixes the query side with a task instruction; documents are embedded as-is, once), plus model name and dimension.
+  - V0 implementation: `qwen/qwen3-embedding-8b` via OpenRouter, one API key shared with the LLM. OpenRouter doesn't pass a `dimensions` parameter through, so vectors are truncated to 1024 dims client-side and L2-normalized (the model is Matryoshka-trained). Open weights mean a later self-hosted implementation produces the same vectors without re-embedding.
   - Embed `title + excerpt + first ~512 tokens`, in batches.
   - Track spend per cycle and stop embedding when `PROVIDER_MONTHLY_SPEND_CAP_USD` is reached. Un-embedded docs carry over to the next cycle.
 - **Taxonomy**: adapt the **IAB Tech Lab Content Taxonomy** (latest version).
@@ -246,6 +246,7 @@ priority(url) = Σ_{p ∈ known parents} global_pr(p) / outdegree(p)  +  λ · d
   3. Prune ad-centric categories that make no sense for discovery. Keep the pruning list in the repo.
   4. **Before shipping, verify the taxonomy's license permits use in an open-source project.**
 - **Tagging**: assign topics by cosine similarity between the document embedding and the topic embeddings. Keep the top 3 above a threshold (configurable). This is zero-shot and needs no training data.
+  - Topics are embedded as *queries* with a category instruction (`TOPIC_EMBEDDING_INSTRUCTION`); documents stay plain passages. Measured in M2 on 18 hand-labeled article snippets: top-1 accuracy 17/18, versus 12/18 when both sides were embedded plainly (Entertainment topics then matched almost everything).
 
 ### 6.5 Scoring stage
 
@@ -403,7 +404,7 @@ Complete each milestone with tests passing before starting the next.
 | M2 | **Taxonomy + suggested sources** | IAB seed loaded and pruned; descriptions data file; topic embeddings; license check noted in README; suggested-sources file with verified feeds |
 | M3 | **Fetcher + frontier** | robots.txt, politeness, conditional GET and backoff; feed and sitemap polling; depth-limit logic with unit tests for min-path merging; OPIC priority; budget and time-limit stop; resumable after kill |
 | M4 | **Extract + classify + dedup** | Classifier and extractor registries; the V0 types; canonicalization with a thorough unit-test table; dedup strategy pipeline plus decision log; fixtures of real saved pages for tests |
-| M5 | **Embed + tag** | `EmbeddingProvider` with an HF implementation plus a fake for tests; batching; spend tracking and cap; topic tagging |
+| M5 | **Embed + tag** | `EmbeddingProvider` with an OpenRouter implementation plus a fake for tests; batching; spend tracking and cap; topic tagging |
 | M6 | **Graph scoring** | Sparse graph build; global PR; domain scores; per-user PPR; profile vectors; tests against a small hand-computed graph |
 | M7 | **Ranking + API** | §6.6 scoring, filters, candidates, exploration slices, diversity cap; recommendations persisted with components; §8 endpoints; explanation generation; tests for composition ratios and filters |
 | M8 | **Frontend** | Survey, feed, search, settings, admin/metrics; generated client only; impression logging; optional like-reason prompt |
@@ -465,6 +466,6 @@ The V0 design already reserves the hooks each item uses.
 
 1. Default `MAX_EXTERNAL_HOPS`: 1 vs. 2. Decide from V0 measurements.
 2. IAB taxonomy license terms for an open-source project.
-3. Which hosted embedding model; confirm its price per 1M tokens fits the cap at the chosen page budget.
+3. ~~Which hosted embedding model~~ **Resolved 2026-09-23:** Qwen3-Embedding-8B via OpenRouter at $0.01/1M tokens, 1024 dims. Worst case at 20k pages/night × ~700 tokens is ~420M tokens ≈ $4/month, well under the cap.
 4. Whether interest tag names sent to OpenRouter are acceptable under the project's privacy promise, or should be omitted from summary prompts.
 5. Project name, bot user agent, and the bot contact page (required before the first real crawl).

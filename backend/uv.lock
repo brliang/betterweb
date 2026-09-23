@@ -116,6 +116,8 @@ source = { virtual = "." }
 dependencies = [
     { name = "alembic" },
     { name = "fastapi" },
+    { name = "feedparser" },
+    { name = "httpx2" },
     { name = "pgvector" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
@@ -126,7 +128,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx2" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "ruff" },
@@ -136,6 +137,8 @@ dev = [
 requires-dist = [
     { name = "alembic", specifier = ">=1.20.0" },
     { name = "fastapi", specifier = ">=0.141.1" },
+    { name = "feedparser", specifier = ">=6.0.14" },
+    { name = "httpx2", specifier = ">=2.13.0" },
     { name = "pgvector", specifier = ">=0.5.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6" },
     { name = "pydantic", specifier = ">=2.13.5" },
@@ -146,7 +149,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx2", specifier = ">=2.13.0" },
     { name = "mypy", specifier = ">=2.3.1" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "ruff", specifier = ">=0.16.8" },
@@ -166,6 +168,27 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/8a/02/91e3416a8fdd715abb903a952a6bec7cdd8d14eed55d415fc8595524c319/fastapi-0.141.1.tar.gz", hash = "sha256:e8822fc40db1e1858054d7a949a888695bc9bdce70139178e33bd2871a453ca1", size = 425799, upload-time = "2026-07-29T17:18:05.568Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cb/03/10388a42375ee7e4ac9b94eb2c5c569c8b5795e377e701c9ac3ad63de890/fastapi-0.141.1-py3-none-any.whl", hash = "sha256:bfb91aa2d334c61cb35ba9a116fc123b3d3df31640b801cf57a7a78ec3f603b3", size = 131954, upload-time = "2026-07-29T17:18:04.364Z" },
+]
+
+[[package]]
+name = "feedparser"
+version = "6.0.14"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "feedparser-sgmllib" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/37/8a/a53da4a77352045d277978a2df322d5379369f9deb1707178899ff7e1121/feedparser-6.0.14.tar.gz", hash = "sha256:088679b0c4b543ee211a820dd544698c76a402122eae7473c04a43425f283d06", size = 286108, upload-time = "2026-07-30T14:07:40.491Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7f/61/f04912e63702e73fb2a378f9c0a1ad9eb17a334a11a6b3fe1daa593903c2/feedparser-6.0.14-py3-none-any.whl", hash = "sha256:e35e3f760151b0c3b22cac9684155cae186a233e16c49bcbc6c49e91e3131137", size = 80668, upload-time = "2026-07-30T14:07:39.175Z" },
+]
+
+[[package]]
+name = "feedparser-sgmllib"
+version = "2.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/da/df/38596299216e5c22d60ed7f97902bb2bc72cfb95f732400f4fa976fd2e62/feedparser_sgmllib-2.1.0.tar.gz", hash = "sha256:61facf2918c4389b5b00714f76c5e03431ffcd94cd1f51d657edd6cd7c396579", size = 26845, upload-time = "2026-08-02T21:27:53.891Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/85/a0/79a31f898092e145bd66e2b338fb0656979acb2bbbcae8220940fbfcd820/feedparser_sgmllib-2.1.0-py3-none-any.whl", hash = "sha256:2cab2d43b95a954f920f18aebce7a4dbbb3f539780b127e2aa114f579821e01d", size = 11652, upload-time = "2026-08-02T21:27:52.894Z" },
 ]
 
 [[package]]
@@ -197,15 +220,15 @@ wheels = [
 
 [[package]]
 name = "httpcore2"
-version = "2.13.0"
+version = "2.13.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "h11" },
     { name = "truststore" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/15/8c/e925b1c92018abb3a1863ce1549d76d2381e334d21d65d4ac8f65dabd78a/httpcore2-2.13.0.tar.gz", hash = "sha256:2adc8be4fb285fbcd6d894298db3b52c177e74b6674eda3a76bd36be3292a3db", size = 67740, upload-time = "2026-09-14T14:18:04.717Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cb/f3/1db7aa2bc2524062192bb0e0323969492d1883152a232fe36eea65f4e35c/httpcore2-2.13.1.tar.gz", hash = "sha256:e0aa977abe17e69a3b820a24542a6fa88702676d83880b8d194dcd18408e5103", size = 68071, upload-time = "2026-09-23T07:47:22.372Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7e/0d/117a771a2bb91df334b66bf4da14cd02f21aefbcfe53180f336ce55e8f90/httpcore2-2.13.0-py3-none-any.whl", hash = "sha256:35ae5be347aa40467b4a5dc032ac67ebb6d27189fc97e8cebcf99616f6a1bb9e", size = 83162, upload-time = "2026-09-14T14:18:02.529Z" },
+    { url = "https://files.pythonhosted.org/packages/09/ba/a4568248771ce81957bfb7cc600264a40fbcda092391ee1c415c50be4bea/httpcore2-2.13.1-py3-none-any.whl", hash = "sha256:e1e05d4f25f7d7d496bfb96748f6f4b67657b03da069b3a68c36069f3db73d0a", size = 83423, upload-time = "2026-09-23T07:47:19.365Z" },
 ]
 
 [[package]]
@@ -225,7 +248,7 @@ wheels = [
 
 [[package]]
 name = "httpx2"
-version = "2.13.0"
+version = "2.13.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio", marker = "sys_platform != 'emscripten'" },
@@ -235,9 +258,9 @@ dependencies = [
     { name = "truststore", marker = "sys_platform != 'emscripten'" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b9/a0/e9deef4654132857b5a5dbe4eddd0ac59c2814500e11f2f5044cd81103ee/httpx2-2.13.0.tar.gz", hash = "sha256:81bd07dc67a3701729ef1f777a3c00c915d4539604fdb5afd327f8682f6b7b44", size = 100290, upload-time = "2026-09-14T14:18:05.486Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d5/44/474bef2a0e9d90f1715d32cb98b0738695ca17ba324095fb2497ed7fbd59/httpx2-2.13.1.tar.gz", hash = "sha256:e48744a19e3af5ee48313d0ce5fe941d5422fae5705ea922a4aabf94d7800dfa", size = 100405, upload-time = "2026-09-23T07:47:23.052Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fe/d1/a0c72b0e006df654709fbc366cc5bcb53e5aee13e1e3395152c6dd293376/httpx2-2.13.0-py3-none-any.whl", hash = "sha256:fc12720cedf72faa26cca6b4ca394e05c894e7d7933fc45cafe767960804e49a", size = 95565, upload-time = "2026-09-14T14:18:03.553Z" },
+    { url = "https://files.pythonhosted.org/packages/d8/9c/6fe8931fd9f381042a9e4c7d5a7b4cbf7016b252bec0c99a49fce42c3326/httpx2-2.13.1-py3-none-any.whl", hash = "sha256:6dff50fabc270ee5fd25d845d0b078ed20564579744d6d962850975996d2f9a4", size = 95597, upload-time = "2026-09-23T07:47:20.995Z" },
 ]
 
 [[package]]

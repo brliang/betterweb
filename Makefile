@@ -1,4 +1,4 @@
-.PHONY: install codegen check-codegen migrate migration format lint typecheck test check dev-api dev-web
+.PHONY: install codegen check-codegen migrate migration taxonomy verify-sources format lint typecheck test check dev-api dev-web
 
 GENERATED := openapi.json frontend/src/api/generated
 
@@ -26,6 +26,16 @@ migration:
 	@test -n "$(name)" || (echo 'usage: make migration name="describe the change"' && exit 1)
 	cd backend && uv run alembic revision --autogenerate -m "$(name)" \
 		--rev-id $$(printf '%04d' $$(( $$(ls migrations/versions | grep -cE '^[0-9]{4}_') + 1 )))
+
+# Load the adapted taxonomy into web.topics, then embed new or changed topics
+# (embedding needs OPENROUTER_API_KEY). Both steps are idempotent.
+taxonomy:
+	cd backend && uv run python -m app.worker taxonomy seed
+	cd backend && uv run python -m app.worker taxonomy embed
+
+# Check each suggested source's robots.txt and feed (makes a few requests per site).
+verify-sources:
+	cd backend && uv run python -m scripts.verify_sources
 
 format:
 	cd backend && uv run ruff check --fix . && uv run ruff format .

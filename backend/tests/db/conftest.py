@@ -46,11 +46,6 @@ def conn(engine: Engine) -> Iterator[Connection]:
 
 
 @pytest.fixture
-def anyio_backend() -> str:
-    return "asyncio"
-
-
-@pytest.fixture
 async def session(engine: Engine) -> AsyncIterator[AsyncSession]:
     async_engine = create_async_engine(engine.url, poolclass=NullPool)
     async with async_engine.connect() as connection:

@@ -59,9 +59,35 @@ class Settings(BaseSettings):
     max_per_domain_per_page: int = Field(default=2, ge=1)
     """Diversity cap per 20 results."""
 
-    # Model providers
+    # Model providers (PLAN.md §6.4, §6.8). Never send user identifiers to a provider.
     provider_monthly_spend_cap_usd: float = Field(default=40, ge=0)
     """Hard stop on combined embedding + LLM spend."""
+    openrouter_api_key: SecretStr | None = None
+    """One key for embeddings and LLM calls; set a monthly limit on it in OpenRouter too."""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    provider_timeout_s: float = Field(default=60, gt=0)
+    provider_max_retries: int = Field(default=3, ge=0)
+    """Retries on 429 and 5xx responses, with exponential backoff."""
+    provider_retry_base_delay_s: float = Field(default=1.0, ge=0)
+    """First backoff delay; doubles after each retry."""
+    embedding_model: str = "qwen/qwen3-embedding-8b"
+    """Changing it means re-embedding everything; the vector size is fixed in the schema."""
+    embedding_batch_size: int = Field(default=64, ge=1)
+    """Texts per embeddings request."""
+    search_query_instruction: str = (
+        "Given a web search query, retrieve relevant web pages that answer the query"
+    )
+    """Qwen3 embeds queries as `Instruct: <this>\\nQuery:<query>`; documents get no prefix."""
+    topic_embedding_instruction: str = (
+        "Given a content category and its description, retrieve web pages that belong to this "
+        "category"
+    )
+    """Topics are embedded as queries against plain document embeddings; far better tagging
+    than embedding both sides plainly. Changing it needs `taxonomy embed --all`."""
+    taxonomy_description_model: str = "anthropic/claude-sonnet-5"
+    """Writes the one-off topic descriptions in backend/data/taxonomy (PLAN.md §6.4)."""
+    llm_concurrency: int = Field(default=8, ge=1)
+    """Parallel LLM requests for batch jobs such as topic descriptions."""
 
 
 @lru_cache

@@ -1,0 +1,304 @@
+# Curated suggested sources for the signup survey (PLAN.md §7 step 2).
+# `topics` are external IDs from the adapted taxonomy (data/taxonomy). Verify with
+# `uv run python -m scripts.verify_sources` after any change. Last verified 2026-09-23: 43 of 43.
+
+[[source]]
+name = "Simon Willison's Weblog"
+url = "https://simonwillison.net/"
+feed = "https://simonwillison.net/atom/everything/"
+topics = ["597", "631"]
+description = "Hands-on notes on large language models, Python, SQLite and open-source tooling."
+
+[[source]]
+name = "Julia Evans"
+url = "https://jvns.ca/"
+feed = "https://jvns.ca/atom.xml"
+topics = ["631", "596"]
+description = "Clear explanations of Linux, networking, git and how computers work."
+
+[[source]]
+name = "LWN.net"
+url = "https://lwn.net/"
+feed = "https://lwn.net/headlines/rss"
+topics = ["631", "602"]
+description = "In-depth reporting on the Linux kernel and free software development."
+
+[[source]]
+name = "Dan Luu"
+url = "https://danluu.com/"
+feed = "https://danluu.com/atom.xml"
+topics = ["631", "596"]
+description = "Long, data-heavy essays on software, hardware and engineering practice."
+
+[[source]]
+name = "Martin Fowler"
+url = "https://martinfowler.com/"
+feed = "https://martinfowler.com/feed.atom"
+topics = ["631", "602"]
+description = "Software architecture, refactoring and agile development."
+
+[[source]]
+name = "The Pragmatic Engineer"
+url = "https://blog.pragmaticengineer.com/"
+feed = "https://blog.pragmaticengineer.com/rss/"
+topics = ["596", "123"]
+description = "How software engineering teams and tech companies actually work."
+
+[[source]]
+name = "Krebs on Security"
+url = "https://krebsonsecurity.com/"
+feed = "https://krebsonsecurity.com/feed/"
+topics = ["618"]
+description = "Investigative journalism on cybercrime and security breaches."
+
+[[source]]
+name = "Schneier on Security"
+url = "https://www.schneier.com/"
+feed = "https://www.schneier.com/feed/atom/"
+topics = ["618"]
+description = "Security technology and policy commentary from Bruce Schneier."
+
+[[source]]
+name = "Ars Technica"
+url = "https://arstechnica.com/"
+feed = "https://feeds.arstechnica.com/arstechnica/index"
+topics = ["596", "464"]
+description = "Technology, science and policy news with technical depth."
+
+[[source]]
+name = "Hackaday"
+url = "https://hackaday.com/"
+feed = "https://hackaday.com/blog/feed/"
+topics = ["239", "596"]
+description = "Hardware hacking, electronics and maker projects."
+
+[[source]]
+name = "Quanta Magazine"
+url = "https://www.quantamagazine.org/"
+feed = "https://www.quantamagazine.org/feed/"
+topics = ["464", "x-mathematics"]
+description = "Research-level mathematics, physics, biology and computer science, explained."
+
+[[source]]
+name = "Nautilus"
+url = "https://nautil.us/"
+feed = "https://nautil.us/feed"
+topics = ["464", "x-philosophy"]
+description = "Science essays connected to culture and philosophy."
+
+[[source]]
+name = "Science News"
+url = "https://www.sciencenews.org/"
+feed = "https://www.sciencenews.org/feed"
+topics = ["464"]
+description = "Independent news across the sciences since 1921."
+
+[[source]]
+name = "Terence Tao"
+url = "https://terrytao.wordpress.com/"
+feed = "https://terrytao.wordpress.com/feed/"
+topics = ["x-mathematics"]
+description = "A Fields medalist's research notes, lectures and expository mathematics."
+
+[[source]]
+name = "Carbon Brief"
+url = "https://www.carbonbrief.org/"
+feed = "https://www.carbonbrief.org/feed"
+topics = ["467"]
+description = "Climate science and energy policy analysis."
+
+[[source]]
+name = "NASA Earth Observatory"
+url = "https://science.nasa.gov/earth/earth-observatory/"
+feed = "https://science.nasa.gov/feed/?science_org=19791%2C22453"
+topics = ["467", "469"]
+description = "Satellite imagery and stories about the planet's climate and environment."
+
+[[source]]
+name = "Universe Today"
+url = "https://www.universetoday.com/"
+feed = "https://www.universetoday.com/rss.xml"
+topics = ["472"]
+description = "Space exploration and astronomy news."
+
+[[source]]
+name = "Marginal Revolution"
+url = "https://marginalrevolution.com/"
+feed = "https://marginalrevolution.com/feed"
+topics = ["80"]
+description = "Economics and ideas from Tyler Cowen and Alex Tabarrok."
+
+[[source]]
+name = "Noahpinion"
+url = "https://www.noahpinion.blog/"
+feed = "https://www.noahpinion.blog/feed"
+topics = ["80"]
+description = "Economics, technology and geopolitics from Noah Smith."
+
+[[source]]
+name = "Stratechery"
+url = "https://stratechery.com/"
+feed = "https://stratechery.com/feed/"
+topics = ["53", "596"]
+description = "Strategy and business models of technology companies."
+
+[[source]]
+name = "Of Dollars And Data"
+url = "https://ofdollarsanddata.com/"
+feed = "https://ofdollarsanddata.com/feed/"
+topics = ["410"]
+description = "Data-driven essays on investing and personal finance."
+
+[[source]]
+name = "Mr. Money Mustache"
+url = "https://www.mrmoneymustache.com/"
+feed = "https://www.mrmoneymustache.com/feed/"
+topics = ["391", "397"]
+description = "Frugality, early retirement and personal finance."
+
+[[source]]
+name = "SCOTUSblog"
+url = "https://www.scotusblog.com/"
+feed = "https://www.scotusblog.com/feed/"
+topics = ["383"]
+description = "Coverage and analysis of the US Supreme Court."
+
+[[source]]
+name = "The Volokh Conspiracy"
+url = "https://reason.com/volokh/"
+feed = "https://reason.com/volokh/feed/"
+topics = ["383"]
+description = "Legal commentary from law professors."
+
+[[source]]
+name = "ProPublica"
+url = "https://www.propublica.org/"
+feed = "https://www.propublica.org/feeds/propublica/main"
+topics = ["386", "380"]
+description = "Nonprofit investigative journalism in the public interest."
+
+[[source]]
+name = "A Collection of Unmitigated Pedantry"
+url = "https://acoup.blog/"
+feed = "https://acoup.blog/feed/"
+topics = ["x-history", "389"]
+description = "Ancient and pre-modern history, especially warfare, examined in depth."
+
+[[source]]
+name = "The Public Domain Review"
+url = "https://publicdomainreview.org/"
+feed = "https://publicdomainreview.org/rss.xml"
+topics = ["x-history", "201"]
+description = "Essays on curious and beautiful works from the history of art, science and literature."
+
+[[source]]
+name = "Aeon"
+url = "https://aeon.co/"
+feed = "https://aeon.co/feed.rss"
+topics = ["x-philosophy", "464"]
+description = "Essays on philosophy, science, psychology and society."
+
+[[source]]
+name = "The Marginalian"
+url = "https://www.themarginalian.org/"
+feed = "https://www.themarginalian.org/feed/"
+topics = ["42", "x-philosophy"]
+description = "Reflections on literature, science, art and how to live."
+
+[[source]]
+name = "Literary Hub"
+url = "https://lithub.com/"
+feed = "https://lithub.com/feed/"
+topics = ["42"]
+description = "Essays, excerpts and news from the world of books."
+
+[[source]]
+name = "The Paris Review"
+url = "https://www.theparisreview.org/blog/"
+feed = "https://www.theparisreview.org/blog/feed/"
+topics = ["42"]
+description = "Literary essays and criticism from the Paris Review's daily."
+
+[[source]]
+name = "Colossal"
+url = "https://www.thisiscolossal.com/"
+feed = "https://www.thisiscolossal.com/feed/"
+topics = ["201", "204"]
+description = "Contemporary art, design and visual culture."
+
+[[source]]
+name = "Hyperallergic"
+url = "https://hyperallergic.com/"
+feed = "https://hyperallergic.com/rss/"
+topics = ["201"]
+description = "Art news, reviews and criticism."
+
+[[source]]
+name = "Smitten Kitchen"
+url = "https://smittenkitchen.com/"
+feed = "https://smittenkitchen.com/feed/"
+topics = ["216"]
+description = "Tested home-cooking recipes with stories."
+
+[[source]]
+name = "David Lebovitz"
+url = "https://www.davidlebovitz.com/"
+feed = "https://www.davidlebovitz.com/feed/"
+topics = ["216", "217"]
+description = "Recipes and food writing from a pastry chef in Paris."
+
+[[source]]
+name = "Atlas Obscura"
+url = "https://www.atlasobscura.com/"
+feed = "https://www.atlasobscura.com/feeds/latest"
+topics = ["653", "x-history"]
+description = "Unusual places, histories and food around the world."
+
+[[source]]
+name = "The Quietus"
+url = "https://thequietus.com/"
+feed = "https://thequietus.com/feed/"
+topics = ["338"]
+description = "Music criticism and features beyond the mainstream."
+
+[[source]]
+name = "RogerEbert.com"
+url = "https://www.rogerebert.com/"
+feed = "https://www.rogerebert.com/feed"
+topics = ["324"]
+description = "Film reviews and criticism."
+
+[[source]]
+name = "Rock Paper Shotgun"
+url = "https://www.rockpapershotgun.com/"
+feed = "https://www.rockpapershotgun.com/feed"
+topics = ["684"]
+description = "PC gaming news, reviews and features."
+
+[[source]]
+name = "Game Developer"
+url = "https://www.gamedeveloper.com/"
+feed = "https://www.gamedeveloper.com/rss.xml"
+topics = ["680", "596"]
+description = "The craft and business of making video games."
+
+[[source]]
+name = "Science-Based Medicine"
+url = "https://sciencebasedmedicine.org/"
+feed = "https://sciencebasedmedicine.org/feed/"
+topics = ["286"]
+description = "Evidence-based evaluation of medical treatments and claims."
+
+[[source]]
+name = "Your Local Epidemiologist"
+url = "https://yourlocalepidemiologist.substack.com/"
+feed = "https://yourlocalepidemiologist.substack.com/feed"
+topics = ["286", "223"]
+description = "Public health science translated for a general audience."
+
+[[source]]
+name = "Stronger By Science"
+url = "https://www.strongerbyscience.com/"
+feed = "https://www.strongerbyscience.com/feed/"
+topics = ["225", "229"]
+description = "Research-based articles on strength training and nutrition."

@@ -5,8 +5,10 @@ tests passing before the next. Don't build V1/V2 features, but honor every "Rese
 
 ## Commands
 `make check` (all format/lint/type/test), `make format`, `make codegen`, `make migrate`,
-`make migration name="..."`, `make dev-api`, `make dev-web`, `docker compose up -d`. Backend commands run via `uv run` from `backend/`; frontend via `npm run`
-from `frontend/`. Run `make check` before every commit; CI runs the same checks.
+`make migration name="..."`, `make taxonomy`, `make verify-sources`, `make dev-api`,
+`make dev-web`, `docker compose up -d`. Backend commands run via `uv run` from `backend/`;
+frontend via `npm run` from `frontend/`. Run `make check` before every commit; CI runs the
+same checks.
 
 ## Project rules
 - No magic numbers: thresholds, weights, limits and budgets go in `backend/app/settings.py`,
@@ -14,8 +16,15 @@ from `frontend/`. Run `make check` before every commit; CI runs the same checks.
 - `web` schema tables must never reference `usr`. User-scoped tables and queries key on `user_id`.
 - Frontend uses only the orval-generated client. After any backend route/model change run
   `make codegen` and commit `openapi.json` + `frontend/src/api/generated/` with it.
-- Model providers (embeddings, LLM) sit behind interfaces, with a fake implementation for tests.
-  Never send user identifiers to a provider.
+- Model providers (embeddings, LLM) sit behind the `EmbeddingProvider` / `LLMProvider`
+  protocols in `app/providers/`, with fakes in `tests/fakes.py`; tests never call a real
+  provider. Both use OpenRouter with one `OPENROUTER_API_KEY`. Never send user identifiers to a
+  provider.
+- Repo data lives in `backend/data/`: the vendored IAB file (never edit it; change
+  `adaptation.toml`), generated `descriptions.json` (rerun `scripts.describe_topics` after any
+  adaptation change; a test fails when it is stale), and `suggested_sources.toml` (run
+  `make verify-sources` after edits; a site whose robots.txt refuses us is dropped, never
+  worked around).
 
 ## Python / FastAPI
 - Python 3.12, fully typed; mypy `--strict` must pass. No `Any` or `# type: ignore` without a
@@ -87,6 +96,9 @@ from `frontend/`. Run `make check` before every commit; CI runs the same checks.
 ## Status
 - M0 (repo scaffold): done. Local Docker is OrbStack; `docker compose up -d` verified
   (Postgres 16.15 + pgvector 0.8.6).
-- M1 (schema + migrations): done. Embedding columns are `vector` with no fixed dimension until
-  the model is chosen (PLAN.md §14 Q3); M5 sets it and adds HNSW indexes. Login users for the
-  three roles are created per deployment (M3 wires the crawl stages to theirs).
+- M1 (schema + migrations): done. Login users for the three roles are created per deployment
+  (M3 wires the crawl stages to theirs).
+- M2 (taxonomy + suggested sources): done. Embedding columns are `vector(1024)`
+  (`EMBEDDING_DIMENSIONS`; migration 0003); M5 adds the HNSW indexes. Topics are embedded as
+  instructed queries against plain document embeddings (PLAN.md §6.4). The taxonomy license
+  question (§14 Q2) is deferred by the user.

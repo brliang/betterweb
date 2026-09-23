@@ -1,0 +1,181 @@
+# How the IAB Tech Lab Content Taxonomy is adapted for discovery (PLAN.md §6.4).
+# `python -m app.worker taxonomy seed` applies this file to the vendored source file and loads
+# the result into web.topics. Only tiers 1-2 are kept; deeper topics appear only if promoted.
+
+[source]
+file = "iab_content_taxonomy_3.1.tsv"
+version = "3.1"
+url = "https://github.com/InteractiveAdvertisingBureau/Taxonomies/blob/6dc67c743572e856c7fa86d310cfa844c9fcda85/Content%20Taxonomies/Content%20Taxonomy%203.1.tsv"
+sha256 = "7212cdc496ba347a03e703b1932bdcdd4fd29089b058f4edeb4d3da1f1222ea7"
+
+# Pruning removes a topic and everything under it. Each entry says why it makes no sense for
+# discovery: mostly ad-targeting segments (products, venues, transactions) and brand-safety labels.
+
+[[prune]]
+id = "v9i3On"  # Sensitive Topics
+reason = "Brand-safety labels for ad blocking, not interests; the subjects themselves (Crime, War and Conflicts, Law) are kept as topics."
+
+[[prune]]
+id = "SPSHQ5"  # Genres
+reason = "Media format facets (Drama, Talk Radio, Soap Opera) that overlap Entertainment and Books; History is added as a topic instead."
+
+[[prune]]
+id = "473"  # Shopping
+reason = "Retail and promotions (coupons, sales, lotteries)."
+
+[[prune]]
+id = "163"  # Personal Celebrations & Life Events
+reason = "Party and event planning segments (baby showers, prom)."
+
+[[prune]]
+id = "150"  # Attractions
+reason = "Local venue segments (malls, nightclubs); museums and parks are covered by Fine Art, Travel and Science."
+
+[[prune]]
+id = "8VZQHL"  # Events
+reason = "Event-marketing segments (awards shows, expos)."
+
+[[prune]]
+id = "1KXCLD"  # Holidays
+reason = "A calendar segment with a single child topic."
+
+[[prune]]
+id = "2"  # Automotive > Auto Body Styles
+reason = "Vehicle shopping segments (sedan, SUV)."
+
+[[prune]]
+id = "16"  # Automotive > Auto Type
+reason = "Vehicle shopping segments (budget cars, luxury cars)."
+
+[[prune]]
+id = "30"  # Automotive > Auto Buying and Selling
+reason = "Transactional."
+
+[[prune]]
+id = "31"  # Automotive > Auto Insurance
+reason = "Transactional."
+
+[[prune]]
+id = "32"  # Automotive > Auto Parts
+reason = "Product segment."
+
+[[prune]]
+id = "41"  # Automotive > Auto Rentals
+reason = "Transactional."
+
+[[prune]]
+id = "28"  # Automotive > Road-Side Assistance
+reason = "Service segment."
+
+[[prune]]
+id = "26"  # Automotive > Dash Cam Videos
+reason = "Video format, not a subject."
+
+[[prune]]
+id = "442"  # Real Estate > Apartments
+reason = "Property listing segment; the tier-1 Real Estate topic is kept."
+
+[[prune]]
+id = "445"  # Real Estate > Developmental Sites
+reason = "Property listing segment."
+
+[[prune]]
+id = "446"  # Real Estate > Hotel Properties
+reason = "Property listing segment."
+
+[[prune]]
+id = "447"  # Real Estate > Houses
+reason = "Property listing segment."
+
+[[prune]]
+id = "448"  # Real Estate > Industrial Property
+reason = "Property listing segment."
+
+[[prune]]
+id = "449"  # Real Estate > Land and Farms
+reason = "Property listing segment."
+
+[[prune]]
+id = "450"  # Real Estate > Office Property
+reason = "Property listing segment."
+
+[[prune]]
+id = "451"  # Real Estate > Real Estate Buying and Selling
+reason = "Transactional."
+
+[[prune]]
+id = "452"  # Real Estate > Real Estate Renting and Leasing
+reason = "Transactional."
+
+[[prune]]
+id = "443"  # Real Estate > Retail Property
+reason = "Property listing segment."
+
+[[prune]]
+id = "444"  # Real Estate > Vacation Properties
+reason = "Property listing segment."
+
+[[prune]]
+id = "431"  # Pets > Pet Supplies
+reason = "Product segment."
+
+[[prune]]
+id = "417"  # Personal Finance > Home Utilities
+reason = "Service segment."
+
+[[prune]]
+id = "278"  # Home & Garden > Home Appliances
+reason = "Product segment."
+
+[[prune]]
+id = "575"  # Style & Fashion > Children's Clothing
+reason = "Product segment."
+
+[[prune]]
+id = "654"  # Travel > Travel Accessories
+reason = "Product segment."
+
+[[prune]]
+id = "551"  # Sports > Sports Equipment
+reason = "Product segment."
+
+[[prune]]
+id = "323"  # Medical Health > Cosmetic Medical Services
+reason = "Service segment."
+
+# Promotion lifts a deeper topic to tier 2 directly under its tier-1 ancestor, for subjects that
+# IAB buries too deep for a tiers 1-2 taxonomy. An optional `name` renames it.
+
+[[promote]]
+id = "631"  # Technology & Computing > Computing > Programming Languages
+name = "Programming"
+
+[[promote]]
+id = "618"  # Technology & Computing > Computing > Information and Network Security
+name = "Computer Security"
+
+[[promote]]
+id = "619"  # Technology & Computing > Computing > Internet
+
+[[promote]]
+id = "602"  # Technology & Computing > Computing > Computer Software and Applications
+name = "Software"
+
+[[promote]]
+id = "61"  # Business and Finance > Business > Startups
+
+# Additions fill gaps in IAB for subjects people read about. IDs start with `x-` so they can
+# never collide with IAB IDs. `parent` is an IAB or `x-` ID, or omitted for a tier-1 topic.
+
+[[add]]
+id = "x-history"
+name = "History"
+
+[[add]]
+id = "x-philosophy"
+name = "Philosophy"
+
+[[add]]
+id = "x-mathematics"
+name = "Mathematics"
+parent = "464"  # Science
