@@ -28,6 +28,11 @@ def test_defaults_match_plan() -> None:
     assert s.provider_monthly_spend_cap_usd == 40
     assert s.embedding_model == "qwen/qwen3-embedding-8b"
     assert s.openrouter_api_key is None
+    assert s.robots_ttl_h == 24
+    assert s.recrawl_after_h < 24  # so the next nightly cycle sees yesterday's fetches
+    assert s.domain_prior_weight == 1.0
+    assert s.sitemap_max_external_hops == 0
+    assert {"utm_*", "fbclid", "gclid", "ref", "mc_*"} <= set(s.tracking_params)
 
 
 def test_env_overrides(monkeypatch: pytest.MonkeyPatch) -> None:

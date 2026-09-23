@@ -20,6 +20,10 @@ same checks.
   protocols in `app/providers/`, with fakes in `tests/fakes.py`; tests never call a real
   provider. Both use OpenRouter with one `OPENROUTER_API_KEY`. Never send user identifiers to a
   provider.
+- Crawling (`app/crawl/`) is polite by construction: every request, polls and redirects
+  included, goes through its domain's robots.txt check and `DomainGate`; never add a request
+  path that skips them, and never follow redirects inline. Tests use `tests/fake_web.py`, never
+  the network. URLs are stored only in `app.crawl.urls.canonicalize` form.
 - Repo data lives in `backend/data/`: the vendored IAB file (never edit it; change
   `adaptation.toml`), generated `descriptions.json` (rerun `scripts.describe_topics` after any
   adaptation change; a test fails when it is stale), and `suggested_sources.toml` (run
@@ -102,3 +106,6 @@ same checks.
   (`EMBEDDING_DIMENSIONS`; migration 0003); M5 adds the HNSW indexes. Topics are embedded as
   instructed queries against plain document embeddings (PLAN.md §6.4). The taxonomy license
   question (§14 Q2) is deferred by the user.
+- M3 (fetcher + frontier): done. `cycle run` runs the fetch stage (resumable; see PLAN.md
+  §6.1-6.2) and refuses the placeholder `USER_AGENT`. Fetched bodies wait in `web.raw_pages`
+  for M4's extract stage. URL canonicalization moved into M3; M4 adds rel=canonical.

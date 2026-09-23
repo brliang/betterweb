@@ -84,10 +84,10 @@ Use two Postgres schemas: `web` (shared graph) and `usr` (user store).
 **Why Documents are separate from URLs and Domains:** a *Document* is one piece of content, the unit that is ranked, recommended, liked or hidden. It has a `type` (article, thread, paper, PDF, video, page…); do not assume articles. Many URLs can resolve to one Document (syndication, tracking params, AMP, mirrors); the dedup stage owns that mapping. A *Domain* carries trust and, later, publisher ownership.
 
 - **`domains`**
-  - Fields: `id`, `host` (normalized, unique), `status`, `robots_txt`, `robots_fetched_at`, `crawl_delay_s`, `feed_urls text[]`, `sitemap_urls text[]`, `first_seen_at`, `last_crawled_at`.
+  - Fields: `id`, `host` (normalized, unique), `status`, `robots_txt`, `robots_fetched_at`, `crawl_delay_s`, `feed_urls text[]`, `sitemap_urls text[]` (from robots.txt), `first_seen_at`, `last_crawled_at`.
   - Reserved for V1: `verified_owner_id` (nullable, no FK yet).
 - **`urls`**
-  - Fields: `id`, `url` (canonicalized, unique), `domain_id`, `document_id` (nullable until deduped), `http_status`, `etag`, `last_modified`, `content_hash`, `first_seen_at`, `last_fetched_at`, `fetch_count`, `change_count`.
+  - Fields: `id`, `url` (canonicalized, unique), `domain_id`, `document_id` (nullable until deduped), `http_status`, `etag`, `last_modified`, `content_hash`, `redirect_to_url_id` (where the last fetch redirected; dedup maps the URL to the target's document), `first_seen_at`, `last_fetched_at`, `fetch_count`, `change_count`.
 - **`documents`**
   - Fields: `id`, `canonical_url_id`, `domain_id`, `type` (enum), `title`, `author`, `published_at`, `language`, `text` (extracted, normalized), `excerpt`, `word_count`, `content_hash`, `created_at`, `updated_at`.
   - Reserved for V1: `simhash bigint` (nullable).
@@ -100,7 +100,9 @@ Use two Postgres schemas: `web` (shared graph) and `usr` (user store).
   - Holds the adapted taxonomy (§6.4).
 - **`document_topics`**: `document_id`, `topic_id`, `score`.
 - **`frontier`**
-  - Fields: `url_id` (unique), `internal_depth`, `external_hops`, `priority`, `reason` (`new` | `recrawl`), `next_fetch_at`, `enqueued_at`.
+  - Fields: `url_id` (unique), `internal_depth`, `external_hops`, `priority`, `reason` (`new` | `recrawl`), `next_fetch_at`, `enqueued_at`, `cycle_id` (the cycle whose plan includes the entry; cleared when fetched), `failures` (transient failures in a row).
+  - Crawl state per URL: a fetched URL keeps its entry as a `recrawl`, so its depth is known when its links are followed. A URL that was fetched and then dropped (gone, rejected, moved permanently, failing) has no entry and is never enqueued again.
+- **`raw_pages`**: `url_id`, `cycle_id`, `fetched_at`, `content_type`, `charset`, `body`. New or changed bodies from the fetch stage, waiting for the extract stage, which deletes them.
 - **`dedup_decisions`**
   - Fields: `id`, `url_id`, `document_id`, `method`, `confidence`, `details jsonb`, `created_at`.
   - Append-only log of every URL→Document merge, so strategies can be audited and tuned.
@@ -161,6 +163,13 @@ All of these live in one Pydantic settings module and can be overridden via envi
 | `MAX_PER_DOMAIN_PER_PAGE` | 2 | Diversity cap per 20 results |
 | `PROVIDER_MONTHLY_SPEND_CAP_USD` | 40 | Hard stop on embedding + LLM spend |
 | `USER_AGENT` | `<name>Bot/0.1 (+https://<project-url>/bot)` | Contact page required |
+| `ROBOTS_TTL_H` | 24 | robots.txt refresh interval |
+| `RECRAWL_AFTER_H` | 20 | A fetched URL is due for re-crawl after this (under a day, so each nightly cycle sees it) |
+| `DOMAIN_BACKOFF_MAX_S` / `DOMAIN_MAX_CONSECUTIVE_ERRORS` | 600 / 5 | Per-domain backoff cap; errors in a row before skipping the domain this cycle |
+| `FETCH_RETRY_BASE_H` / `FETCH_MAX_FAILURES` | 20 / 4 | Per-URL retry delay (doubling) and failures before dropping it |
+| `DOMAIN_PRIOR_WEIGHT` | 1.0 | λ in the frontier priority (§6.2) |
+| `TRACKING_PARAMS` | `utm_*`, `mc_*`, `fbclid`, `gclid`, `ref`, … | Removed by canonicalization |
+| `FEED_MAX_ITEMS` / `SITEMAP_MAX_URLS_PER_DOMAIN` / `SITEMAP_MAX_FILES_PER_DOMAIN` / `SITEMAP_MAX_AGE_DAYS` / `SITEMAP_MAX_EXTERNAL_HOPS` | 100 / 500 / 10 / 30 / 0 | Feed and sitemap polling caps (§6.1) |
 
 ---
 
@@ -172,7 +181,13 @@ A **crawl cycle** is one nightly batch run with a fixed page budget, recorded in
 
 1. **Fetch**
    1. Poll all feeds and sitemaps for domains in the frontier's reach, and enqueue new items.
+      - Feeds of every domain in reach; sitemaps (those robots.txt lists) only within `SITEMAP_MAX_EXTERNAL_HOPS` (default 0, the pinned domains), since a big external site's sitemap would flood the frontier.
+      - Capped per poll: the newest `FEED_MAX_ITEMS` feed entries; the newest `SITEMAP_MAX_URLS_PER_DOMAIN` sitemap URLs from at most `SITEMAP_MAX_FILES_PER_DOMAIN` files, skipping entries older than `SITEMAP_MAX_AGE_DAYS`.
    2. Pop URLs from `frontier` in `priority` order until the page budget or time limit is reached.
+      - *Planning* marks the chosen entries with the cycle (`frontier.cycle_id`); each domain gets at most as many as its delay allows in the time left.
+      - Fetching runs every domain at its own pace, and a global limit of `GLOBAL_CONCURRENCY` requests admits the highest priority first.
+      - Entries that need no request (robots.txt disallows them) free their budget, so planning and fetching repeat until the budget, the time limit or the due entries run out.
+      - The time limit counts from the cycle's start, including after a resume.
       - Reserve `CYCLE_RECRAWL_SHARE` of the budget for `recrawl` entries.
       - Prioritize re-crawls by `change_count / fetch_count`.
    3. Unfetched entries stay in the frontier for the next cycle.
@@ -181,7 +196,11 @@ A **crawl cycle** is one nightly batch run with a fixed page budget, recorded in
 4. **Embed + Tag**: embed new or changed documents, then assign topics (§6.4).
 5. **Scores**: compute global PageRank, domain scores and per-user PPR, then refresh user profile vectors (§6.5).
 
-Use Postgres as the work queue (`SELECT … FOR UPDATE SKIP LOCKED`) rather than adding a queue service.
+Use Postgres as the work queue rather than adding a queue service.
+- Planning marks entries with the cycle instead of locking them with `FOR UPDATE SKIP LOCKED`, which Postgres doesn't allow alongside the window functions that cap each domain.
+- A Postgres advisory lock keeps one cycle running at a time.
+- A killed fetch stage resumes from the entries still marked with its cycle. Each fetch result is committed on its own, so a kill loses only the requests in flight.
+- The worker refuses to crawl while `USER_AGENT` points at the placeholder contact URL (§14 Q5).
 
 ### 6.2 Frontier: depth limits and priority
 
@@ -199,15 +218,24 @@ Use Postgres as the work queue (`SELECT … FOR UPDATE SKIP LOCKED`) rather than
 priority(url) = Σ_{p ∈ known parents} global_pr(p) / outdegree(p)  +  λ · domain_score(url.domain)
 ```
 
-- Recompute `priority` for affected frontier rows after each cycle's scoring stage.
+- Recompute `priority` for affected frontier rows after each cycle's scoring stage (`app.crawl.frontier.recompute_priorities`). New entries start with the domain prior; an improved position keeps the higher priority.
+- Pinned domains are recognized without reading `usr`: only seeds and URLs reached from them without leaving the domain have `external_hops = 0`.
+- **Redirects** aren't followed inline. The target is enqueued (same position within the site, one hop further for another site) and fetched in the same cycle if due. A permanent redirect drops the old URL; a temporary one keeps it for re-crawls.
+- A URL whose position improves after its links were followed doesn't re-follow them until it is re-crawled.
 - The domain prior gives new pages on trusted domains a head start.
 - Cold start (no scores yet): priority = the domain prior only, where pinned domains get 1.0 and everything else 0.
 
 **Politeness:**
-- Fetch and cache `robots.txt` per domain (refresh daily), and obey it.
+- Fetch and cache `robots.txt` per domain (refresh after `ROBOTS_TTL_H`, default 24), and obey it per RFC 9309.
+  - Use protego: the longest match wins, and `*`/`$` patterns work. The standard library's parser does neither.
+  - A 4xx means no rules. A 5xx or no answer means nothing may be fetched, unless an earlier copy is cached.
+  - A disallowed URL is postponed until the next refresh and costs no budget.
+- Space requests to a domain by `max(PER_DOMAIN_MIN_DELAY_S, Crawl-delay)`, measured from the previous response.
 - Use conditional GET (`ETag`, `If-Modified-Since`).
-- Back off exponentially on 429/5xx.
-- Enforce the content-type allowlist: HTML, PDF, RSS/Atom/XML.
+- Back off exponentially on 429/5xx/timeouts.
+  - Per domain: pauses double up to `DOMAIN_BACKOFF_MAX_S` (a longer `Retry-After` is honored up to the same cap). After `DOMAIN_MAX_CONSECUTIVE_ERRORS` in a row, the domain is skipped until the next cycle.
+  - Per URL: retry after `FETCH_RETRY_BASE_H`, doubling. After `FETCH_MAX_FAILURES`, drop the URL.
+- Enforce the content-type allowlist (HTML, PDF, RSS/Atom/XML) and `MAX_PAGE_BYTES`, counted after decompression.
 
 ### 6.3 Extraction, classification, dedup
 
@@ -221,12 +249,14 @@ priority(url) = Σ_{p ∈ known parents} global_pr(p) / outdegree(p)  +  λ · d
 - V0 set: `article` / `post` (trafilatura), generic `page` (trafilatura fallback), `pdf` (pypdf), `video` (og/schema metadata only).
 - Unknown types fall back to `page`. Always record `type`.
 
-**URL canonicalization** (applied before insertion into `urls`):
+**URL canonicalization** (applied before insertion into `urls`; `app.crawl.urls`, built in M3 because the frontier needs it):
 - Lowercase the scheme and host.
 - Strip the fragment and default ports.
 - Remove tracking params (`utm_*`, `fbclid`, `gclid`, `ref`, `mc_*`, a configurable list).
 - Sort the remaining query params.
+- Also: decode unreserved percent-escapes, uppercase the rest, and resolve dot segments. Don't upgrade http, drop the trailing slash, or lowercase the path. Reject non-http(s) URLs and URLs with credentials.
 - After fetching, honor `<link rel="canonical">` and `og:url` when they are on the same site.
+- "Same site" (internal links, redirects, feed items) means hosts equal up to a leading `www.`.
 
 **Dedup handler.** Implement a pipeline of `DedupStrategy` objects, each returning `(document_id | None, confidence, details)`. The first confident match wins, and every decision is written to `dedup_decisions`.
 - V0 strategies:
@@ -403,7 +433,7 @@ Complete each milestone with tests passing before starting the next.
 | M1 | **Schema + migrations** | Every §4 table as Alembic migrations; the two schemas; DB roles, with a test proving the crawl role cannot read `usr`; user-deletion test |
 | M2 | **Taxonomy + suggested sources** | IAB seed loaded and pruned; descriptions data file; topic embeddings; license check noted in README; suggested-sources file with verified feeds |
 | M3 | **Fetcher + frontier** | robots.txt, politeness, conditional GET and backoff; feed and sitemap polling; depth-limit logic with unit tests for min-path merging; OPIC priority; budget and time-limit stop; resumable after kill |
-| M4 | **Extract + classify + dedup** | Classifier and extractor registries; the V0 types; canonicalization with a thorough unit-test table; dedup strategy pipeline plus decision log; fixtures of real saved pages for tests |
+| M4 | **Extract + classify + dedup** | Classifier and extractor registries; the V0 types; rel=canonical/og:url handling (URL canonicalization and its test table landed in M3); dedup strategy pipeline plus decision log; fixtures of real saved pages for tests |
 | M5 | **Embed + tag** | `EmbeddingProvider` with an OpenRouter implementation plus a fake for tests; batching; spend tracking and cap; topic tagging |
 | M6 | **Graph scoring** | Sparse graph build; global PR; domain scores; per-user PPR; profile vectors; tests against a small hand-computed graph |
 | M7 | **Ranking + API** | §6.6 scoring, filters, candidates, exploration slices, diversity cap; recommendations persisted with components; §8 endpoints; explanation generation; tests for composition ratios and filters |
@@ -468,4 +498,4 @@ The V0 design already reserves the hooks each item uses.
 2. IAB taxonomy license terms for an open-source project.
 3. ~~Which hosted embedding model~~ **Resolved 2026-09-23:** Qwen3-Embedding-8B via OpenRouter at $0.01/1M tokens, 1024 dims. Worst case at 20k pages/night × ~700 tokens is ~420M tokens ≈ $4/month, well under the cap.
 4. Whether interest tag names sent to OpenRouter are acceptable under the project's privacy promise, or should be omitted from summary prompts.
-5. Project name, bot user agent, and the bot contact page (required before the first real crawl).
+5. Project name, bot user agent, and the bot contact page (required before the first real crawl). The worker refuses to run a cycle while `USER_AGENT` points at the `example.invalid` placeholder.

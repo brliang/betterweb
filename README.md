@@ -12,6 +12,7 @@ The full design and milestone list is in [docs/PLAN.md](docs/PLAN.md).
 |---|---|
 | `backend/` | Python 3.12 · FastAPI · uv. `app/` is the API; `app/worker` is the nightly crawl CLI. |
 | `backend/app/db/` | SQLAlchemy models for the `web` (shared graph) and `usr` (user store) schemas |
+| `backend/app/crawl/` | The crawler: URL canonicalization, robots.txt, the frontier, polite fetching |
 | `backend/migrations/` | Alembic migrations, including the DB roles that keep the schemas apart |
 | `backend/app/providers/` | Embedding and LLM providers (OpenRouter), behind interfaces |
 | `backend/data/taxonomy/` | The vendored IAB taxonomy, our adaptation of it, and topic descriptions |
@@ -40,8 +41,19 @@ make codegen        # re-export openapi.json and regenerate the TS client
 make dev-api        # FastAPI on :8000
 make dev-web        # Vite on :5173, proxying /api -> :8000
 docker compose up   # Postgres (pgvector), migrations, API, frontend
+```
+
+The worker CLI runs the nightly crawl cycle (so far, the fetch stage) and development tasks:
+
+```sh
+cd backend
+uv run python -m app.worker frontier seed https://example.com/ --feed https://example.com/feed.xml
+uv run python -m app.worker cycle run    # run, or resume after a kill, the crawl cycle
 docker compose run --rm worker cycle run
 ```
+
+`cycle run` refuses to crawl until `USER_AGENT` names a real contact page for the bot
+(docs/PLAN.md §14 Q5): sites need a way to reach whoever runs the crawler.
 
 **Typed client rule:** never hand-write API types in the frontend. After changing any backend
 route or model, run `make codegen` and commit the result; CI fails if the client is stale.

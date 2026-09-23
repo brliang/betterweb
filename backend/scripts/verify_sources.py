@@ -17,11 +17,11 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlsplit
-from urllib.robotparser import RobotFileParser
 
 import feedparser  # type: ignore[import-untyped]  # ships no type information
 import httpx2
 
+from app.crawl.robots import MAX_ROBOTS_REDIRECTS, Robots, RobotsStatus, fetch_robots
 from app.settings import get_settings
 from app.suggested_sources import SuggestedSource, load_suggested_sources
 
@@ -41,39 +41,26 @@ class Report:
     newest: datetime | None = None
 
 
-DISALLOW_ALL = ["User-agent: *", "Disallow: /"]
-
-
-def robots_from(lines: list[str]) -> RobotFileParser:
-    parser = RobotFileParser()
-    parser.parse(lines)
-    return parser
-
-
 class RobotsCache:
-    """One robots.txt fetch per origin, shared by concurrent checks."""
+    """One robots.txt fetch per origin, shared by concurrent checks, with the rules applied
+    exactly as the crawler applies them (app.crawl.robots)."""
 
-    def __init__(self, client: httpx2.AsyncClient) -> None:
+    def __init__(self, client: httpx2.AsyncClient, user_agent: str) -> None:
         self._client = client
-        self._tasks: dict[str, asyncio.Task[RobotFileParser]] = {}
+        self._user_agent = user_agent
+        self._tasks: dict[str, asyncio.Task[Robots]] = {}
 
-    def get(self, url: str) -> Awaitable[RobotFileParser]:
+    def get(self, url: str) -> Awaitable[Robots]:
         parts = urlsplit(url)
         origin = f"{parts.scheme}://{parts.netloc}"
         if origin not in self._tasks:
             self._tasks[origin] = asyncio.create_task(self._fetch(origin))
         return self._tasks[origin]
 
-    async def _fetch(self, origin: str) -> RobotFileParser:
-        # RFC 9309: a 4xx means no rules apply; a 5xx or no answer means assume everything is
-        # disallowed.
-        try:
-            response = await self._client.get(f"{origin}/robots.txt", follow_redirects=True)
-        except httpx2.TransportError:
-            return robots_from(DISALLOW_ALL)
-        if response.is_success:
-            return robots_from(response.text.splitlines())
-        return robots_from([] if response.status_code < 500 else DISALLOW_ALL)
+    async def _fetch(self, origin: str) -> Robots:
+        fetched = await fetch_robots(self._client, origin)
+        unreachable = fetched.status is RobotsStatus.UNREACHABLE
+        return Robots(None if unreachable else fetched.text, self._user_agent)
 
 
 def newest_entry(entries: list[dict[str, object]]) -> datetime | None:
@@ -94,13 +81,12 @@ async def check(
     client: httpx2.AsyncClient,
     robots: RobotsCache,
     source: SuggestedSource,
-    user_agent: str,
     max_age: timedelta,
     now: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> Report:
     report = Report(source)
     for url in (str(source.url), str(source.feed)):
-        if not (await robots.get(url)).can_fetch(user_agent, url):
+        if not (await robots.get(url)).allows(url):
             report.problems.append(f"robots.txt disallows {url}")
     if report.problems:
         return report
@@ -135,15 +121,15 @@ async def verify(max_age_days: int) -> int:
     sources = load_suggested_sources()
     limit = asyncio.Semaphore(CONCURRENCY)
     async with httpx2.AsyncClient(
-        headers={"User-Agent": settings.user_agent}, timeout=TIMEOUT_S
+        headers={"User-Agent": settings.user_agent},
+        timeout=TIMEOUT_S,
+        max_redirects=MAX_ROBOTS_REDIRECTS,
     ) as client:
-        robots = RobotsCache(client)
+        robots = RobotsCache(client, settings.user_agent)
 
         async def one(source: SuggestedSource) -> Report:
             async with limit:
-                return await check(
-                    client, robots, source, settings.user_agent, timedelta(days=max_age_days)
-                )
+                return await check(client, robots, source, timedelta(days=max_age_days))
 
         reports = await asyncio.gather(*(one(source) for source in sources))
 

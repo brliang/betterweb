@@ -43,7 +43,54 @@ class Settings(BaseSettings):
     global_concurrency: int = Field(default=50, ge=1)
     max_page_bytes: int = Field(default=5 * 1024 * 1024, gt=0)
     user_agent: str = "DiscoveryBot/0.1 (+https://example.invalid/bot)"
-    """Placeholder until the project name and bot contact page exist (PLAN.md §14 Q5)."""
+    """Placeholder until the project name and bot contact page exist (PLAN.md §14 Q5); the
+    worker refuses to crawl while it points at example.invalid."""
+    fetch_timeout_s: float = Field(default=30, gt=0)
+    robots_ttl_h: float = Field(default=24, gt=0)
+    """How long a fetched robots.txt is trusted before it is fetched again."""
+    domain_backoff_max_s: float = Field(default=600, ge=0)
+    """Longest pause for a domain after 429/5xx responses (delays double per error)."""
+    domain_max_consecutive_errors: int = Field(default=5, ge=1)
+    """After this many 429/5xx/timeouts in a row, a domain is skipped for the rest of the cycle."""
+
+    # Frontier (PLAN.md §6.2)
+    recrawl_after_h: float = Field(default=20, gt=0)
+    """A fetched URL is due for re-crawl this long after its last fetch (under a day, so the
+    next nightly cycle sees it)."""
+    fetch_retry_base_h: float = Field(default=20, gt=0)
+    """First retry delay for a URL whose fetch failed transiently; doubles per failure."""
+    fetch_max_failures: int = Field(default=4, ge=1)
+    """Transient failures in a row before a URL is dropped from the frontier."""
+    domain_prior_weight: float = Field(default=1.0, ge=0)
+    """λ in the frontier priority: weight of the domain score next to in-link PageRank mass."""
+    tracking_params: list[str] = [
+        "utm_*",
+        "mc_*",
+        "fbclid",
+        "gclid",
+        "gclsrc",
+        "dclid",
+        "msclkid",
+        "igshid",
+        "ref",
+        "ref_src",
+        "_hsenc",
+        "_hsmi",
+    ]
+    """Query parameters removed by URL canonicalization; a trailing `*` matches a prefix."""
+
+    # Feeds and sitemaps (PLAN.md §6.1 step 1.1)
+    feed_max_items: int = Field(default=100, ge=1)
+    """Newest entries enqueued per feed poll."""
+    sitemap_max_urls_per_domain: int = Field(default=500, ge=1)
+    """Newest sitemap entries enqueued per domain per cycle."""
+    sitemap_max_files_per_domain: int = Field(default=10, ge=1)
+    """Sitemap files (including index children) fetched per domain per cycle."""
+    sitemap_max_age_days: float = Field(default=30, gt=0)
+    """Sitemap entries whose lastmod is older than this are skipped."""
+    sitemap_max_external_hops: int = Field(default=0, ge=0)
+    """Sitemaps are polled only for domains this close to a seed; a big external site's
+    sitemap would otherwise flood the frontier."""
 
     # Personalized PageRank
     ppr_damping: float = Field(default=0.85, gt=0, lt=1)

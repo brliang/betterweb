@@ -5,10 +5,12 @@ description = "Graph-centric, transparent content discovery engine (backend)"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "alembic>=1.20.0",
+    "defusedxml>=0.7.1",
     "fastapi>=0.141.1",
     "feedparser>=6.0.14",
     "httpx2>=2.13.0",
     "pgvector>=0.5.0",
+    "protego>=0.7.0",
     "psycopg[binary]>=3.3.6",
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
@@ -21,6 +23,7 @@ dev = [
     "mypy>=2.3.1",
     "pytest>=9.1.1",
     "ruff>=0.16.8",
+    "types-defusedxml>=0.7.0",
 ]
 
 [tool.ruff]

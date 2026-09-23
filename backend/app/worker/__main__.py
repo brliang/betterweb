@@ -1,6 +1,9 @@
 """Worker CLI: ``python -m app.worker <command>``.
 
-- ``cycle run``: the nightly crawl cycle (PLAN.md §6.1), wired up in M10; stages land in M3-M6.
+- ``cycle run``: run (or resume) the nightly crawl cycle (PLAN.md §6.1). Stages so far: fetch
+  (M3); extract, dedup, embed and scores land in M4-M6, and M10 adds scheduling and alerts.
+- ``frontier seed URL [--feed FEED ...]``: enqueue a homepage as a pinned seed (for development;
+  the API does this when a user pins a domain).
 - ``taxonomy seed``: load the adapted taxonomy into web.topics (idempotent).
 - ``taxonomy embed [--all]``: embed topics that lack an embedding from the configured model.
 """
@@ -10,6 +13,12 @@ import asyncio
 import logging
 import sys
 
+import sqlalchemy as sa
+
+from app.crawl.cycle import CYCLE_LOCK_KEY, finish_cycle, start_or_resume_cycle
+from app.crawl.fetch_stage import run_fetch_stage
+from app.crawl.frontier import SeedError, add_seed
+from app.crawl.http import create_client
 from app.db.session import create_engine, create_sessionmaker
 from app.providers.embeddings import OpenRouterEmbeddings
 from app.providers.openrouter import OpenRouterClient, ProviderError
@@ -23,6 +32,44 @@ from app.taxonomy import (
 )
 
 logger = logging.getLogger("app.worker")
+
+PLACEHOLDER_CONTACT = "example.invalid"
+
+
+class WorkerError(Exception):
+    """A command can't run as configured."""
+
+
+async def run_cycle(settings: Settings) -> None:
+    if PLACEHOLDER_CONTACT in settings.user_agent:
+        # PLAN.md principle 4 and §14 Q5: identify honestly, with a real contact page.
+        raise WorkerError(
+            "USER_AGENT still points at the placeholder contact URL; set it to a real bot "
+            "contact page before crawling"
+        )
+    engine = create_engine(settings)
+    try:
+        async with engine.connect() as lock:
+            if not await lock.scalar(sa.select(sa.func.pg_try_advisory_lock(CYCLE_LOCK_KEY))):
+                raise WorkerError("another crawl cycle is already running")
+            async with create_sessionmaker(engine)() as session, create_client(settings) as client:
+                cycle = await start_or_resume_cycle(session, settings)
+                logger.info("crawl cycle %d: fetch stage", cycle.id)
+                await run_fetch_stage(session, cycle, client, settings)
+                await finish_cycle(session, cycle)
+                logger.info("crawl cycle %d finished", cycle.id)
+    finally:
+        await engine.dispose()
+
+
+async def seed_frontier(settings: Settings, url: str, feeds: list[str]) -> None:
+    engine = create_engine(settings)
+    try:
+        async with create_sessionmaker(engine)() as session, session.begin():
+            url_id = await add_seed(session, url, settings, feeds)
+    finally:
+        await engine.dispose()
+    logger.info("seeded %s (url %d) with %d feed(s)", url, url_id, len(feeds))
 
 
 async def seed_taxonomy(settings: Settings) -> None:
@@ -67,7 +114,13 @@ def main(argv: list[str] | None = None) -> int:
 
     cycle = commands.add_parser("cycle", help="crawl cycle commands")
     cycle_commands = cycle.add_subparsers(dest="action", required=True)
-    cycle_commands.add_parser("run", help="run all cycle stages")
+    cycle_commands.add_parser("run", help="run or resume a crawl cycle")
+
+    frontier = commands.add_parser("frontier", help="crawl frontier commands")
+    frontier_commands = frontier.add_subparsers(dest="action", required=True)
+    seed = frontier_commands.add_parser("seed", help="enqueue a homepage as a pinned seed")
+    seed.add_argument("url")
+    seed.add_argument("--feed", action="append", default=[], help="a feed of the site")
 
     taxonomy = commands.add_parser("taxonomy", help="topic taxonomy commands")
     taxonomy_commands = taxonomy.add_subparsers(dest="action", required=True)
@@ -78,16 +131,18 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         match (args.command, args.action):
+            case ("cycle", "run"):
+                asyncio.run(run_cycle(get_settings()))
+            case ("frontier", "seed"):
+                asyncio.run(seed_frontier(get_settings(), args.url, args.feed))
             case ("taxonomy", "seed"):
                 asyncio.run(seed_taxonomy(get_settings()))
             case ("taxonomy", "embed"):
                 asyncio.run(embed_taxonomy(get_settings(), redo_all=args.all))
             case _:
-                logger.error(
-                    "%s %s: not implemented yet (milestone M10)", args.command, args.action
-                )
+                logger.error("%s %s: unknown command", args.command, args.action)
                 return 1
-    except (ProviderError, TaxonomyError) as error:
+    except (ProviderError, SeedError, TaxonomyError, WorkerError) as error:
         logger.error("%s %s failed: %s", args.command, args.action, error)
         return 1
     return 0
@@ -95,4 +150,5 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    logging.getLogger("httpx2").setLevel(logging.WARNING)  # one line per request otherwise
     sys.exit(main())

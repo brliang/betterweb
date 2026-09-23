@@ -23,7 +23,8 @@ class Domain(Base):
 
     id: Mapped[int] = mapped_column(sa.BigInteger, sa.Identity(), primary_key=True)
     host: Mapped[str] = mapped_column(unique=True)
-    """Normalized: lowercase, no port."""
+    """The URL authority as canonicalized (app.crawl.urls): lowercase, with the port only when
+    it isn't the scheme's default."""
     status: Mapped[DomainStatus] = mapped_column(server_default=DomainStatus.ACTIVE.value)
     robots_txt: Mapped[str | None]
     robots_fetched_at: Mapped[datetime | None]
@@ -56,8 +57,15 @@ class Url(Base):
     last_modified: Mapped[str | None]
     """The Last-Modified header, verbatim, for conditional GET."""
     content_hash: Mapped[str | None]
+    """SHA-256 of the last 200 response body; a different hash on re-fetch counts a change."""
+    redirect_to_url_id: Mapped[int | None] = mapped_column(
+        sa.ForeignKey("web.urls.id", ondelete="SET NULL"), index=True
+    )
+    """Where the last fetch redirected; the dedup stage maps this URL to the target's document."""
     first_seen_at: Mapped[datetime] = mapped_column(server_default=NOW)
     last_fetched_at: Mapped[datetime | None]
+    """Set on every request that got an HTTP response or a network error; a URL that has
+    been fetched and has no frontier entry is never enqueued again."""
     fetch_count: Mapped[int] = mapped_column(server_default="0")
     change_count: Mapped[int] = mapped_column(server_default="0")
 
@@ -147,6 +155,9 @@ class DocumentTopic(Base):
 
 
 class FrontierEntry(Base):
+    """Crawl state for one URL (PLAN.md §6.2). A fetched URL keeps its entry, as a re-crawl,
+    so its depth is known when its links are followed and it can be re-fetched."""
+
     __tablename__ = "frontier"
     __table_args__ = (
         sa.CheckConstraint("internal_depth >= 0", name="internal_depth_non_negative"),
@@ -161,6 +172,13 @@ class FrontierEntry(Base):
     reason: Mapped[FrontierReason]
     next_fetch_at: Mapped[datetime] = mapped_column(server_default=NOW)
     enqueued_at: Mapped[datetime] = mapped_column(server_default=NOW)
+    cycle_id: Mapped[int | None] = mapped_column(
+        sa.ForeignKey("web.crawl_cycles.id", ondelete="SET NULL"), index=True
+    )
+    """The cycle whose plan includes this URL; cleared when it is fetched. A killed cycle
+    resumes by fetching the entries still marked with it."""
+    failures: Mapped[int] = mapped_column(sa.SmallInteger, server_default="0")
+    """Transient fetch failures in a row (429, 5xx, timeouts); drives the retry backoff."""
 
 
 class DedupDecision(Base):
@@ -193,6 +211,27 @@ class CrawlCycle(Base):
     pages_fetched: Mapped[int] = mapped_column(server_default="0")
     stats: Mapped[JSONObject] = mapped_column(server_default=EMPTY_JSON)
     """Per-stage counts, timings, errors and provider spend."""
+
+
+class RawPage(Base):
+    """A fetched body waiting for the extract stage (PLAN.md §6.1 step 2), which deletes it.
+
+    Only new or changed content is stored: a 304 or an unchanged hash stores nothing.
+    """
+
+    __tablename__ = "raw_pages"
+    __table_args__ = ({"schema": WEB},)
+
+    url_id: Mapped[int] = mapped_column(sa.ForeignKey(Url.id, ondelete="CASCADE"), primary_key=True)
+    cycle_id: Mapped[int | None] = mapped_column(
+        sa.ForeignKey(CrawlCycle.id, ondelete="SET NULL"), index=True
+    )
+    fetched_at: Mapped[datetime]
+    content_type: Mapped[str]
+    """The media type from the Content-Type header, lowercase, without parameters."""
+    charset: Mapped[str | None]
+    """The charset parameter of the Content-Type header, if any."""
+    body: Mapped[bytes] = mapped_column(sa.LargeBinary)
 
 
 class GlobalScore(Base):

@@ -33,9 +33,8 @@ async def run(routes: dict[str, httpx2.Response]) -> list[str]:
         return routes.get(str(request.url), httpx2.Response(404))
 
     async with httpx2.AsyncClient(transport=httpx2.MockTransport(handler)) as client:
-        report = await check(
-            client, RobotsCache(client), SOURCE, USER_AGENT, timedelta(days=180), lambda: NOW
-        )
+        robots = RobotsCache(client, USER_AGENT)
+        report = await check(client, robots, SOURCE, timedelta(days=180), lambda: NOW)
     return report.problems
 
 

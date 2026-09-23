@@ -15,8 +15,22 @@ def no_api_key(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     get_settings.cache_clear()
 
 
-def test_cycle_run_is_not_implemented_yet() -> None:
+@pytest.fixture
+def placeholder_user_agent(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    monkeypatch.setenv("USER_AGENT", "DiscoveryBot/0.1 (+https://example.invalid/bot)")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.mark.usefixtures("placeholder_user_agent")
+def test_cycle_run_refuses_the_placeholder_user_agent() -> None:
+    # PLAN.md principle 4: no crawling without a real contact page in the user agent.
     assert main(["cycle", "run"]) == 1
+
+
+def test_seed_rejects_an_uncrawlable_url() -> None:
+    assert main(["frontier", "seed", "mailto:someone@example.com"]) == 1
 
 
 @pytest.mark.usefixtures("no_api_key")
