@@ -51,9 +51,32 @@ class Settings(BaseSettings):
     """Link-clicks within one domain from its entry point."""
     max_external_hops: int = Field(default=1, ge=0)
     """Domain jumps from the nearest pinned seed."""
+    skip_path_segments: list[str] = [
+        "account",
+        "accounts",
+        "cart",
+        "checkout",
+        "forgot-password",
+        "login",
+        "logout",
+        "password-reset",
+        "register",
+        "sign-in",
+        "sign-up",
+        "signin",
+        "signup",
+        "subscribe",
+        "subscription",
+        "subscriptions",
+    ]
+    """URLs with a path segment among these (case-insensitive, trailing digits ignored, so
+    `login2` matches) are never enqueued: account pages the bot can't use."""
 
     # Crawl cycle
     cycle_page_budget: int = Field(default=20_000, gt=0)
+    cycle_fetch_rounds: int = Field(default=3, ge=1)
+    """Rounds of fetch then extract per cycle, each fetching the links the last one found: the
+    crawl reaches this many link levels further per night, within the budget and time limit."""
     cycle_recrawl_share: float = Field(default=0.2, ge=0, le=1)
     """Share of the page budget reserved for re-crawls."""
     cycle_time_limit_h: float = Field(default=4, gt=0)
@@ -63,8 +86,11 @@ class Settings(BaseSettings):
 
     # Politeness
     per_domain_min_delay_s: float = Field(default=1.0, ge=0)
-    """Used unless robots.txt Crawl-delay is larger."""
+    """Between requests to one registrable domain; a larger robots.txt Crawl-delay (the largest
+    of its hosts') is used instead."""
     per_domain_concurrency: int = Field(default=1, ge=1)
+    """Requests at once to one registrable domain (every `*.bearblog.dev` blog is one), which
+    also shares its pace: the delay and backoff."""
     global_concurrency: int = Field(default=50, ge=1)
     max_page_bytes: int = Field(default=5 * 1024 * 1024, gt=0)
     user_agent: str = "bribot/0.1 (+https://example.invalid/bot)"
@@ -109,7 +135,8 @@ class Settings(BaseSettings):
     feed_max_items: int = Field(default=100, ge=1)
     """Newest entries enqueued per feed poll."""
     sitemap_max_urls_per_domain: int = Field(default=500, ge=1)
-    """Newest sitemap entries enqueued per domain per cycle."""
+    """Newest sitemap entries enqueued per domain per cycle; entries with a news publication
+    date go first."""
     sitemap_max_files_per_domain: int = Field(default=10, ge=1)
     """Sitemap files (including index children) fetched per domain per cycle."""
     sitemap_max_age_days: float = Field(default=30, gt=0)
@@ -117,6 +144,41 @@ class Settings(BaseSettings):
     sitemap_max_external_hops: int = Field(default=0, ge=0)
     """Sitemaps are polled only for domains this close to a seed; a big external site's
     sitemap would otherwise flood the frontier."""
+    sitemap_skip_words: list[str] = [
+        "author",
+        "authors",
+        "categories",
+        "category",
+        "cities",
+        "city",
+        "collections",
+        "contributor",
+        "contributors",
+        "landing",
+        "location",
+        "locations",
+        "player",
+        "players",
+        "region",
+        "regions",
+        "roster",
+        "rosters",
+        "schedule",
+        "schedules",
+        "standings",
+        "stats",
+        "subscription",
+        "tag",
+        "tagpages",
+        "tags",
+        "team",
+        "teams",
+        "topic",
+        "topics",
+        "weather",
+    ]
+    """Sitemaps whose path has one of these words (`sitemap-authors.xml`, `/tags/sitemap.xml`)
+    list hub or reference pages, not articles, so they aren't read."""
 
     # Extraction and dedup (PLAN.md §6.3)
     extract_max_text_chars: int = Field(default=200_000, ge=1)

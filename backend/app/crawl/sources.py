@@ -1,9 +1,12 @@
 """Parsing feeds and sitemaps into URLs to enqueue (PLAN.md §6.1 step 1.1)."""
 
+import re
 import time
 import zlib
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
+from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element, ParseError
 
 import feedparser  # type: ignore[import-untyped]  # ships no type information
@@ -20,6 +23,10 @@ class SourceItem:
     url: str
     """Absolute, not yet canonicalized."""
     updated: datetime | None = None
+    """A feed entry's publish date, or a sitemap entry's last change (`lastmod`)."""
+    published: datetime | None = None
+    """A news sitemap entry's publication date. `lastmod` moves whenever a page is touched
+    (a stats page, constantly), so this is the better sign of a new article."""
 
 
 @dataclass(frozen=True)
@@ -68,6 +75,14 @@ def parse_lastmod(text: str | None) -> datetime | None:
     return stamp.replace(tzinfo=UTC) if stamp.tzinfo is None else stamp.astimezone(UTC)
 
 
+def _publication_date(url: Element) -> datetime | None:
+    """The `<news:news><news:publication_date>` of a news sitemap entry."""
+    for child in url:
+        if _local_name(child) == "news":
+            return parse_lastmod(_child_text(child, "publication_date"))
+    return None
+
+
 def gunzip(content: bytes, max_bytes: int) -> bytes | None:
     """Decompress a gzipped body, or None if it is corrupt or inflates past `max_bytes`."""
     decompressor = zlib.decompressobj(wbits=zlib.MAX_WBITS | 16)
@@ -94,7 +109,7 @@ def parse_sitemap(content: bytes, max_bytes: int) -> Sitemap | None:
         return None
     child = "url" if kind == "urlset" else "sitemap"
     items = [
-        SourceItem(loc, parse_lastmod(_child_text(element, "lastmod")))
+        SourceItem(loc, parse_lastmod(_child_text(element, "lastmod")), _publication_date(element))
         for element in root
         if _local_name(element) == child and (loc := _child_text(element, "loc"))
     ]
@@ -104,13 +119,31 @@ def parse_sitemap(content: bytes, max_bytes: int) -> Sitemap | None:
 def newest(
     items: list[SourceItem], limit: int, *, now: datetime, max_age: timedelta | None = None
 ) -> list[SourceItem]:
-    """Up to `limit` items, newest first, undated ones last; dated ones older than `max_age`
-    are dropped."""
+    """Up to `limit` items: those with a publication date (news articles) first, then the rest
+    by their last change, newest first within each, and undated ones last. Dated ones older
+    than `max_age` are dropped."""
     cutoff = now - max_age if max_age is not None else None
+
+    def when(item: SourceItem) -> datetime | None:
+        return item.published or item.updated
+
     dated = sorted(
-        (item for item in items if item.updated and (cutoff is None or item.updated >= cutoff)),
-        key=lambda item: item.updated or now,
+        (item for item in items if (at := when(item)) and (cutoff is None or at >= cutoff)),
+        key=lambda item: (item.published is not None, when(item) or now),
         reverse=True,
     )
-    undated = [item for item in items if item.updated is None]
+    undated = [item for item in items if when(item) is None]
     return (dated + undated)[:limit]
+
+
+def _path_words(url: str) -> set[str]:
+    return set(re.split(r"[^a-z0-9]+", urlsplit(url).path.lower())) - {""}
+
+
+def order_sitemaps(urls: Iterable[str], skip_words: Collection[str]) -> list[str]:
+    """The sitemaps worth reading, best first: news sitemaps (`news` in the path), then the
+    rest in the given order. Ones whose path names hub pages rather than articles
+    (`sitemap-authors.xml`, with `SITEMAP_SKIP_WORDS`) are dropped."""
+    skip = {word.lower() for word in skip_words}
+    kept = [url for url in urls if not _path_words(url) & skip]
+    return sorted(kept, key=lambda url: "news" not in _path_words(url))

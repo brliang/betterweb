@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.crawl.urls import TrackingParams, canonicalize, host_of
+from app.crawl.urls import TrackingParams, canonicalize, has_path_segment, host_of
 from app.db.web import Domain, Url
 from app.enums import FrontierReason
 from app.settings import Settings
@@ -59,14 +59,20 @@ class Candidate:
 
 
 def merge_candidates(candidates: Iterable[Candidate], settings: Settings) -> dict[str, Position]:
-    """One position per URL (the merged minimum), dropping those beyond the depth limits."""
+    """One position per URL (the merged minimum), dropping those beyond the depth limits and
+    account pages (`SKIP_PATH_SEGMENTS`)."""
     merged: dict[str, Position] = {}
     for candidate in candidates:
         existing = merged.get(candidate.url)
         merged[candidate.url] = (
             candidate.position if existing is None else existing.merge(candidate.position)
         )
-    return {url: position for url, position in merged.items() if position.within(settings)}
+    skip = frozenset(name.lower() for name in settings.skip_path_segments)
+    return {
+        url: position
+        for url, position in merged.items()
+        if position.within(settings) and not has_path_segment(url, skip)
+    }
 
 
 async def ensure_domains(session: AsyncSession, hosts: Iterable[str]) -> dict[str, int]:

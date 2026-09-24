@@ -152,10 +152,11 @@ All of these live in one Pydantic settings module and can be overridden via envi
 | `MAX_EXTERNAL_HOPS` | 1 | Domain jumps from nearest pinned seed (try 2 later) |
 | `CYCLE_PAGE_BUDGET` | 20,000 | Pages fetched per cycle; tune from measurements |
 | `CYCLE_RECRAWL_SHARE` | 0.2 | Budget share reserved for re-crawls |
+| `CYCLE_FETCH_ROUNDS` | 3 | Fetch + extract rounds per cycle; each fetches the links the last found (§6.1) |
 | `CYCLE_TIME_LIMIT_H` | 4 | Hard stop for the fetch stage |
 | `CYCLE_LOCAL_START` | 02:00 | In the user's timezone |
-| `PER_DOMAIN_MIN_DELAY_S` | 1.0 | Or robots `Crawl-delay` if larger |
-| `PER_DOMAIN_CONCURRENCY` | 1 | |
+| `PER_DOMAIN_MIN_DELAY_S` | 1.0 | Or robots `Crawl-delay` if larger; per registrable domain (§6.2) |
+| `PER_DOMAIN_CONCURRENCY` | 1 | Per registrable domain (§6.2) |
 | `GLOBAL_CONCURRENCY` | 50 | |
 | `MAX_PAGE_BYTES` | 5 MB | |
 | `PPR_DAMPING` | 0.85 | |
@@ -184,6 +185,8 @@ All of these live in one Pydantic settings module and can be overridden via envi
 | `FETCH_RETRY_BASE_H` / `FETCH_MAX_FAILURES` | 20 / 4 | Per-URL retry delay (doubling) and failures before dropping it |
 | `DOMAIN_PRIOR_WEIGHT` | 1.0 | λ in the frontier priority (§6.2) |
 | `TRACKING_PARAMS` | `utm_*`, `mc_*`, `fbclid`, `gclid`, `ref`, … | Removed by canonicalization |
+| `SKIP_PATH_SEGMENTS` | `login`, `signup`, `subscribe`, `checkout`, `account`, … | URLs with such a path segment are never enqueued (§6.2) |
+| `SITEMAP_SKIP_WORDS` | `authors`, `tags`, `categories`, `teams`, `stats`, `schedule`, … | Sitemaps naming hub pages aren't read (§6.1) |
 | `FEED_MAX_ITEMS` / `SITEMAP_MAX_URLS_PER_DOMAIN` / `SITEMAP_MAX_FILES_PER_DOMAIN` / `SITEMAP_MAX_AGE_DAYS` / `SITEMAP_MAX_EXTERNAL_HOPS` | 100 / 500 / 10 / 30 / 0 | Feed and sitemap polling caps (§6.1) |
 | `EXTRACT_MAX_TEXT_CHARS` / `EXTRACT_EXCERPT_CHARS` / `EXTRACT_FIELD_MAX_CHARS` | 200,000 / 300 / 500 | Stored text, excerpt, and title/author lengths (§6.3) |
 | `EXTRACT_MAX_LINKS_PER_PAGE` / `EXTRACT_ANCHOR_MAX_CHARS` / `PDF_MAX_PAGES` | 500 / 200 / 50 | Links kept per page, anchor text length, PDF pages read |
@@ -200,10 +203,13 @@ All of these live in one Pydantic settings module and can be overridden via envi
 
 A **crawl cycle** is one nightly batch run with a fixed page budget, recorded in `crawl_cycles`. Stages run in order. Each stage is idempotent and resumable (safe to re-run after a crash) and records its stats.
 
+Fetch (1) and Extract/Classify/Dedup (2-3) run in up to `CYCLE_FETCH_ROUNDS` rounds before the later stages run once. Only the first round polls; each later one fetches the links the last round's extraction enqueued, so one night reaches that many link levels (a followed Substack's writers' blogs, then their other posts). Rounds stop early when a round ends at the budget or time limit, which are shared by the whole cycle. *(Added 2026-09-24: with one round, content two links from a pinned home page took three nights.)*
+
 1. **Fetch**
    1. Poll all feeds and sitemaps for domains in the frontier's reach, and enqueue new items.
       - Feeds of every domain in reach; sitemaps (those robots.txt lists) only within `SITEMAP_MAX_EXTERNAL_HOPS` (default 0, the pinned domains), since a big external site's sitemap would flood the frontier.
       - Capped per poll: the newest `FEED_MAX_ITEMS` feed entries; the newest `SITEMAP_MAX_URLS_PER_DOMAIN` sitemap URLs from at most `SITEMAP_MAX_FILES_PER_DOMAIN` files, skipping entries older than `SITEMAP_MAX_AGE_DAYS`.
+      - Sitemap files are read news sitemaps first, then in robots.txt's order; ones whose path names hub pages (`SITEMAP_SKIP_WORDS`: authors, tags, teams, stats, …) are skipped. Entries with a news publication date go before those with only a `lastmod`, which moves whenever a page is touched (a stats page, constantly), so articles aren't crowded out. *(Added after cycle 1, 2026-09-24: alphabetical order spent the NYT file budget on ten Athletic hub sitemaps.)*
    2. Pop URLs from `frontier` in `priority` order until the page budget or time limit is reached.
       - *Planning* marks the chosen entries with the cycle (`frontier.cycle_id`); each domain gets at most as many as its delay allows in the time left.
       - Fetching runs every domain at its own pace, and a global limit of `GLOBAL_CONCURRENCY` requests admits the highest priority first.
@@ -215,7 +221,7 @@ A **crawl cycle** is one nightly batch run with a fixed page budget, recorded in
 2. **Extract/Classify**: determine the document type and extract text and metadata (§6.3).
 3. **Dedup**: map each URL to a Document (§6.3).
    - Steps 2 and 3 run as one pass (`app.ingest.stage`), one transaction per raw page: the page's document, links, frontier candidates and dedup decisions are written and its raw page deleted together, so a killed stage resumes with the pages still waiting. CPU-bound extraction runs in a worker thread.
-   - This pass also **follows links**: a page's links are enqueued one step further from its frontier position (§6.2). Links are followed only when a page is new or changed, and a URL they add is fetched in the next cycle, so the crawl reaches one link level deeper per cycle; feeds and sitemaps (depth 0) are found every cycle.
+   - This pass also **follows links**: a page's links are enqueued one step further from its frontier position (§6.2). Links are followed only when a page is new or changed, and a URL they add is fetched in the next round (or the next cycle, after the last round), so the crawl reaches `CYCLE_FETCH_ROUNDS` link levels deeper per cycle; feeds and sitemaps (depth 0) are found every cycle.
 4. **Embed + Tag**: embed new or changed documents, then assign topics (§6.4).
    - Runs in document-id order, one embeddings request per transaction (vectors, tags and spend together), so a killed stage resumes with the documents still waiting.
    - A document is a candidate when it has no embedding from the configured model or was updated since its embedding was checked; if its embedding input is unchanged it costs no request.
@@ -238,7 +244,7 @@ Use Postgres as the work queue rather than adding a queue service.
 - Following an internal link: `internal_depth + 1`, same `external_hops`.
 - Following an external link: `external_hops + 1`, and `internal_depth` resets to 0.
 - If a URL is reached by several paths, keep the **minimum** of each field.
-- Never enqueue a URL exceeding `MAX_INTERNAL_DEPTH` or `MAX_EXTERNAL_HOPS`.
+- Never enqueue a URL exceeding `MAX_INTERNAL_DEPTH` or `MAX_EXTERNAL_HOPS`, or an account page (a path segment in `SKIP_PATH_SEGMENTS`, such as `login` or `subscribe`): the bot never logs in, so they are wasted fetches.
 
 **Priority (estimated PageRank, OPIC-style):** an uncrawled URL has no known outlinks, but its known in-links do have scores from the previous cycle:
 
@@ -259,6 +265,8 @@ priority(url) = Σ_{p ∈ known parents} global_pr(p) / outdegree(p)  +  λ · d
   - A 4xx means no rules. A 5xx or no answer means nothing may be fetched, unless an earlier copy is cached.
   - A disallowed URL is postponed until the next refresh and costs no budget.
 - Space requests to a domain by `max(PER_DOMAIN_MIN_DELAY_S, Crawl-delay)`, measured from the previous response.
+  - Pacing is per **registrable domain** (the ICANN section of the Public Suffix List): every `*.bearblog.dev`, `*.substack.com` or `*.github.io` blog shares one gate (delay, concurrency and backoff), since they share servers. The gate uses the largest `Crawl-delay` among its hosts; robots.txt itself stays per host. *(Added 2026-09-24, before multi-round cycles began reaching many blogs on one platform at once.)*
+  - Planning still caps each domain's entries separately, so a platform's many hosts can be over-planned; the leftovers are released for the next cycle.
 - Use conditional GET (`ETag`, `If-Modified-Since`).
 - Back off exponentially on 429/5xx/timeouts.
   - Per domain: pauses double up to `DOMAIN_BACKOFF_MAX_S` (a longer `Retry-After` is honored up to the same cap). After `DOMAIN_MAX_CONSECUTIVE_ERRORS` in a row, the domain is skipped until the next cycle.

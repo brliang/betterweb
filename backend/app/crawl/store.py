@@ -85,9 +85,9 @@ def robots_update(
 
 def site_sitemaps(robots: Robots, host: str, tracking: TrackingParams) -> list[str]:
     """The sitemaps robots.txt lists for the site itself (a sitemap may only list URLs of its
-    own site), canonicalized."""
+    own site), canonicalized, in robots.txt's order."""
     urls = (canonicalize(url, tracking) for url in robots.sitemaps)
-    return sorted({url for url in urls if url and same_site(host_of(url), host)})
+    return list(dict.fromkeys(url for url in urls if url and same_site(host_of(url), host)))
 
 
 PLANNED = (
@@ -124,6 +124,12 @@ class CrawlStore:
             "fetch": {**self.stage, "counts": dict(self.counts)},
         }
         await self._session.commit()
+
+    @property
+    def round(self) -> int:
+        """Which fetch round of the cycle this is, from 1."""
+        value = self.stage.get("round", 1)
+        return value if isinstance(value, int) else 1
 
     async def set_stage(self, **values: object) -> None:
         async with self._lock:

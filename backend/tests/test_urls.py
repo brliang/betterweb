@@ -1,6 +1,14 @@
 import pytest
 
-from app.crawl.urls import TrackingParams, canonicalize, host_of, origin_of, same_site
+from app.crawl.urls import (
+    TrackingParams,
+    canonicalize,
+    has_path_segment,
+    host_of,
+    origin_of,
+    registrable_domain,
+    same_site,
+)
 from app.settings import Settings
 
 TRACKING = TrackingParams(Settings(_env_file=None).tracking_params)
@@ -118,3 +126,43 @@ def test_hosts_and_origins() -> None:
 )
 def test_same_site(a: str, b: str, expected: bool) -> None:
     assert same_site(a, b) is expected
+
+
+ACCOUNT = frozenset({"login", "subscription"})
+
+
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        ("https://example.com/login", True),
+        ("https://example.com/athletic/login2/?redirect_uri=x", True),
+        ("https://example.com/Login/", True),
+        ("https://example.com/subscription/athletic?onboarded=false", True),
+        ("https://example.com/2026/09/why-i-cancelled-my-subscription/", False),
+        ("https://example.com/blog/?next=/login", False),
+        ("https://example.com/logins", False),
+    ],
+)
+def test_has_path_segment(url: str, expected: bool) -> None:
+    assert has_path_segment(url, ACCOUNT) is expected
+
+
+@pytest.mark.parametrize(
+    ("host", "expected"),
+    [
+        ("herman.bearblog.dev", "bearblog.dev"),
+        ("bearblog.dev", "bearblog.dev"),
+        ("someone.substack.com", "substack.com"),
+        ("cooking.nytimes.com", "nytimes.com"),
+        ("www.bbc.co.uk", "bbc.co.uk"),
+        # Only ICANN suffixes count: blogs on a platform's own suffix share its servers.
+        ("someone.github.io", "github.io"),
+        ("blog.example.com:8443", "example.com"),
+        # IP addresses and bare suffixes are their own.
+        ("127.0.0.1:8000", "127.0.0.1"),
+        ("[::1]:8000", "::1"),
+        ("localhost", "localhost"),
+    ],
+)
+def test_registrable_domain(host: str, expected: str) -> None:
+    assert registrable_domain(host) == expected

@@ -13,6 +13,7 @@ dependencies = [
     "pgvector>=0.5.0",
     "protego>=0.7.0",
     "psycopg[binary]>=3.3.6",
+    "publicsuffixlist>=1.0.2.20260922",
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
     "pypdf>=6.19.0",
@@ -65,6 +66,11 @@ python_version = "3.12"
 plugins = ["pydantic.mypy"]
 files = ["app", "migrations", "scripts", "tests"]
 explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+# publicsuffixlist ships no type information (no py.typed marker or stubs).
+module = ["publicsuffixlist"]
+ignore_missing_imports = true
 
 [tool.pydantic-mypy]
 init_forbid_extra = true

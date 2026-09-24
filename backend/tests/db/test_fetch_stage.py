@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crawl.cycle import finish_cycle, start_or_resume_cycle
-from app.crawl.fetch_stage import FetchStage, StopReason
+from app.crawl.fetch_stage import FetchStage, StopReason, start_next_round
 from app.crawl.frontier import Position, add_seed
 from app.crawl.http import create_client
 from app.crawl.store import CrawlStore
@@ -366,6 +366,44 @@ async def test_robots_txt_decides_what_is_fetched(session: AsyncSession) -> None
     }
 
 
+async def test_sitemaps_are_read_news_first_skipping_hub_listings(session: AsyncSession) -> None:
+    """The file budget goes to the news sitemap, not to earlier-listed author and tag
+    sitemaps, and its article beats a page whose lastmod is newer."""
+    today = NOW.date().isoformat()
+    yesterday = (NOW - timedelta(days=1)).isoformat()
+    web = FakeWeb(
+        {
+            "https://example.com/robots.txt": robots(
+                "Sitemap: https://example.com/sitemap-authors.xml\n"
+                "Sitemap: https://example.com/sitemap-tags.xml\n"
+                "Sitemap: https://example.com/sitemap-pages.xml\n"
+                "Sitemap: https://example.com/sitemap-news.xml\n"
+            ),
+            HOME: html(),
+            "https://example.com/sitemap-pages.xml": urlset(("https://example.com/scores", today)),
+            "https://example.com/sitemap-news.xml": xml(
+                '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+                'xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">'
+                "<url><loc>https://example.com/2026/story</loc><news:news>"
+                f"<news:publication_date>{yesterday}</news:publication_date>"
+                "</news:news></url></urlset>"
+            ),
+            "https://example.com/2026/story": html(),
+            "https://example.com/scores": html(),
+        }
+    )
+    options = settings(sitemap_max_files_per_domain=2, sitemap_max_urls_per_domain=1)
+    await add_seed(session, HOME, options)
+    await run(session, web, options, now=NOW)
+
+    assert web.count("https://example.com/sitemap-news.xml") == 1
+    assert web.count("https://example.com/sitemap-pages.xml") == 1
+    assert web.count("https://example.com/sitemap-authors.xml") == 0
+    assert web.count("https://example.com/sitemap-tags.xml") == 0
+    assert web.count("https://example.com/2026/story") == 1
+    assert web.count("https://example.com/scores") == 0
+
+
 async def test_crawl_delay_is_obeyed(session: AsyncSession) -> None:
     starts: list[float] = []
 
@@ -383,6 +421,66 @@ async def test_crawl_delay_is_obeyed(session: AsyncSession) -> None:
     gaps = [later - earlier for earlier, later in itertools.pairwise(starts)]
     assert len(gaps) == 2
     assert all(gap >= 0.2 for gap in gaps)
+
+
+async def test_hosts_under_one_registrable_domain_share_a_gate(session: AsyncSession) -> None:
+    """Blogs on one platform (`*.blogs.example`) are paced as one site; others aren't held up."""
+    starts: dict[str, list[float]] = {"shared": [], "other": []}
+
+    def timed(group: str, response: httpx2.Response) -> Route:
+        async def handler(request: httpx2.Request) -> httpx2.Response:
+            starts[group].append(asyncio.get_running_loop().time())
+            return response
+
+        return handler
+
+    web = FakeWeb()
+    blogs = [f"https://{name}.blogs.example/" for name in ("one", "two", "three")]
+    for page in blogs:
+        web.routes[page] = timed("shared", html())
+        web.routes[f"{page}robots.txt"] = timed("shared", robots("User-agent: *\nAllow: /"))
+    web.routes["https://other.example/"] = timed("other", html())
+    for page in [*blogs, "https://other.example/"]:
+        await add_seed(session, page, settings())
+    await run(session, web, settings(per_domain_min_delay_s=0.1), now=NOW)
+
+    shared = sorted(starts["shared"])
+    assert len(shared) == 6  # three robots.txt files and three pages
+    assert all(later - earlier >= 0.1 for earlier, later in itertools.pairwise(shared))
+    assert starts["other"][0] < shared[-1]  # fetched alongside, not after them
+
+
+async def test_later_rounds_fetch_what_the_last_one_found(session: AsyncSession) -> None:
+    web = FakeWeb(site())
+    options = settings(cycle_fetch_rounds=2)
+    await add_seed(session, HOME, options, [FEED])
+    reason, cycle = await run(session, web, options, now=NOW)
+    assert reason is StopReason.DONE
+
+    # The extract stage would enqueue the links it found; a link is due at once.
+    found = "https://example.com/found-in-round-1"
+    web.routes[found] = html()
+    await add_seed(session, found, options)
+    assert await start_next_round(session, cycle, options)
+    reason, cycle = await run(session, web, options, now=NOW)
+
+    assert reason is StopReason.DONE
+    assert web.count(found) == 1
+    assert web.count(FEED) == 1  # only the first round polls
+    assert cycle.stats["fetch"]["round"] == 2  # type: ignore[index]
+    assert not await start_next_round(session, cycle, options)  # CYCLE_FETCH_ROUNDS reached
+
+
+async def test_a_round_stopped_early_ends_the_fetching(session: AsyncSession) -> None:
+    pages = [f"https://example.com/{index}" for index in range(3)]
+    web = FakeWeb({page: html() for page in pages})
+    options = settings(cycle_page_budget=2)
+    for page in pages:
+        await add_seed(session, page, options)
+    reason, cycle = await run(session, web, options, now=NOW)
+
+    assert reason is StopReason.BUDGET
+    assert not await start_next_round(session, cycle, options)
 
 
 async def test_a_moved_feed_is_followed_and_updated(session: AsyncSession) -> None:
