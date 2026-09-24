@@ -6,8 +6,12 @@
    Entries that turn out not to need a request (robots.txt disallows them) free up budget, so
    planning and fetching repeat until the budget, the time limit or the due entries run out.
 
-Every request goes through its domain's robots.txt and DomainGate, polls included. A kill at
-any point is safe: a re-run skips polling if it finished and resumes the planned entries.
+Every request goes through its domain's robots.txt and DomainGate, polls included; hosts under
+one registrable domain share a gate. A kill at any point is safe: a re-run skips polling if it
+finished and resumes the planned entries.
+
+A cycle runs up to CYCLE_FETCH_ROUNDS rounds of fetch then extract (see `start_next_round`);
+only the first polls, and later ones fetch the links the extract stage just enqueued.
 """
 
 import asyncio
@@ -27,9 +31,23 @@ from app.crawl.frontier import Candidate, Position
 from app.crawl.http import ALLOWED_CONTENT_TYPES, FetchResult, Outcome, fetch
 from app.crawl.politeness import DeadlineReached, DomainGate, PrioritySlots
 from app.crawl.robots import Robots, fetch_robots
-from app.crawl.sources import SITEMAP_EXTRA_TYPES, SourceItem, newest, parse_feed, parse_sitemap
+from app.crawl.sources import (
+    SITEMAP_EXTRA_TYPES,
+    SourceItem,
+    newest,
+    order_sitemaps,
+    parse_feed,
+    parse_sitemap,
+)
 from app.crawl.store import CrawlStore, DomainInfo, PlannedFetch, PollTarget, site_sitemaps
-from app.crawl.urls import TrackingParams, canonicalize, host_of, origin_of, same_site
+from app.crawl.urls import (
+    TrackingParams,
+    canonicalize,
+    host_of,
+    origin_of,
+    registrable_domain,
+    same_site,
+)
 from app.db.web import CrawlCycle
 from app.settings import Settings
 
@@ -78,6 +96,8 @@ class FetchStage:
         self._robots_ttl = timedelta(hours=settings.robots_ttl_h)
         self._slots = PrioritySlots(settings.global_concurrency)
         self._domains: dict[str, _Domain] = {}
+        self._gates: dict[str, DomainGate] = {}
+        """One per registrable domain: every `*.bearblog.dev` blog shares bearblog.dev's."""
         self._domains_lock = asyncio.Lock()
         self._order = itertools.count()
         self._tasks: asyncio.TaskGroup | None = None
@@ -100,7 +120,8 @@ class FetchStage:
         reason = self._stopped or StopReason.DONE
         await store.set_stage(stopped=reason.value)
         logger.info(
-            "fetch stage stopped (%s): %d pages fetched; %s",
+            "fetch stage round %d stopped (%s): %d pages fetched; %s",
+            store.round,
             reason,
             store.cycle.pages_fetched,
             dict(sorted(store.counts.items())),
@@ -121,12 +142,19 @@ class FetchStage:
             if host not in self._domains:
                 info = await self._store.domain(host)
                 settings = self._settings
-                gate = DomainGate(
-                    delay_s=max(settings.per_domain_min_delay_s, info.crawl_delay_s or 0),
-                    concurrency=settings.per_domain_concurrency,
-                    backoff_max_s=settings.domain_backoff_max_s,
-                    max_errors=settings.domain_max_consecutive_errors,
-                )
+                delay_s = max(settings.per_domain_min_delay_s, info.crawl_delay_s or 0)
+                registered = registrable_domain(host)
+                gate = self._gates.get(registered)
+                if gate is None:
+                    gate = self._gates[registered] = DomainGate(
+                        delay_s=delay_s,
+                        concurrency=settings.per_domain_concurrency,
+                        backoff_max_s=settings.domain_backoff_max_s,
+                        max_errors=settings.domain_max_consecutive_errors,
+                    )
+                else:
+                    # A shared gate goes at the pace of its slowest host's Crawl-delay.
+                    gate.delay_s = max(gate.delay_s, delay_s)
                 self._domains[host] = _Domain(info, gate)
             return self._domains[host]
 
@@ -150,7 +178,7 @@ class FetchStage:
                         info, origin, fetched, self._now()
                     )
                 if (delay := domain.robots.crawl_delay_s) is not None:
-                    domain.gate.delay_s = max(self._settings.per_domain_min_delay_s, delay)
+                    domain.gate.delay_s = max(domain.gate.delay_s, delay)
             return domain.robots
 
     async def _request(
@@ -207,7 +235,10 @@ class FetchStage:
         domain = await self._domain(target.host)
         robots = await self._robots(domain, origin_of(target.sample_url), POLL_PRIORITY)
         if self._stopped is None and robots is not None:
-            sitemaps = site_sitemaps(robots, target.host, self._tracking)
+            sitemaps = order_sitemaps(
+                site_sitemaps(robots, target.host, self._tracking),
+                self._settings.sitemap_skip_words,
+            )
             if sitemaps:
                 await self._poll_sitemaps(target, sitemaps)
 
@@ -297,10 +328,17 @@ class FetchStage:
                 self._store.counts["sitemap_invalid"] += 1
             elif sitemap.is_index:
                 # Newest child sitemaps first; they list the newest pages.
-                for child in newest(sitemap.items, len(sitemap.items), now=self._now()):
-                    canonical = canonicalize(child.url, self._tracking)
-                    if canonical and same_site(host_of(canonical), target.host):
-                        queue.append(canonical)
+                children = newest(sitemap.items, len(sitemap.items), now=self._now())
+                for child in order_sitemaps(
+                    (
+                        canonical
+                        for c in children
+                        if (canonical := canonicalize(c.url, self._tracking))
+                    ),
+                    settings.sitemap_skip_words,
+                ):
+                    if same_site(host_of(child), target.host):
+                        queue.append(child)
             else:
                 items.extend(sitemap.items)
         self._store.counts["sitemap_items"] += len(items)
@@ -375,6 +413,18 @@ class FetchStage:
         target = await self._store.record_fetch(entry, result, self._now())
         if target is not None:
             await self._schedule(target)
+
+
+async def start_next_round(session: AsyncSession, cycle: CrawlCycle, settings: Settings) -> bool:
+    """Let the fetch stage run again, to fetch what the extract stage enqueued after the last
+    round. False when CYCLE_FETCH_ROUNDS were run or the last round stopped early (a budget or
+    time stop ends the cycle's fetching)."""
+    store = CrawlStore(session, cycle, settings)
+    if store.stage.get("stopped") != StopReason.DONE or store.round >= settings.cycle_fetch_rounds:
+        return False
+    del store.stage["stopped"]
+    await store.set_stage(round=store.round + 1)
+    return True
 
 
 async def run_fetch_stage(

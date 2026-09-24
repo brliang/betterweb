@@ -7,6 +7,7 @@ from app.crawl.sources import (
     SourceItem,
     gunzip,
     newest,
+    order_sitemaps,
     parse_feed,
     parse_lastmod,
     parse_sitemap,
@@ -40,6 +41,15 @@ INDEX = b"""<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <sitemap><loc>https://example.com/sitemap-1.xml</loc><lastmod>2026-09-01T00:00:00+02:00</lastmod></sitemap>
 </sitemapindex>"""
+
+NEWS = b"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+<url><loc>https://example.com/2026/09/22/story</loc><lastmod>2026-09-23T09:00:00Z</lastmod>
+<news:news><news:publication><news:name>Ex</news:name><news:language>en</news:language>
+</news:publication><news:publication_date>2026-09-22T12:00:00-04:00</news:publication_date>
+<news:title>Story</news:title></news:news></url>
+</urlset>"""
 
 BILLION_LAUGHS = b"""<?xml version="1.0"?>
 <!DOCTYPE lolz [<!ENTITY lol "lol"><!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;">]>
@@ -126,3 +136,52 @@ def test_newest_first_undated_last_old_dropped() -> None:
     chosen = newest(items, 10, now=NOW, max_age=timedelta(days=30))
     assert [i.url.rsplit("/", 1)[1] for i in chosen] == ["newer", "recent", "undated"]
     assert len(newest(items, 2, now=NOW)) == 2
+
+
+def test_news_sitemap_entries_have_a_publication_date() -> None:
+    sitemap = parse_sitemap(NEWS, MAX_BYTES)
+    assert sitemap is not None
+    assert sitemap.items == [
+        SourceItem(
+            "https://example.com/2026/09/22/story",
+            updated=datetime(2026, 9, 23, 9, tzinfo=UTC),
+            published=datetime(2026, 9, 22, 16, tzinfo=UTC),
+        )
+    ]
+
+
+def test_published_items_go_before_merely_updated_ones() -> None:
+    """A stats page touched a minute ago doesn't crowd out yesterday's article."""
+    stats = SourceItem("https://example.com/stats", updated=NOW)
+    article = SourceItem(
+        "https://example.com/article",
+        updated=NOW - timedelta(days=2),
+        published=NOW - timedelta(days=1),
+    )
+    old = SourceItem("https://example.com/old", published=NOW - timedelta(days=40))
+    chosen = newest([stats, old, article], 10, now=NOW, max_age=timedelta(days=30))
+    assert chosen == [article, stats]
+    assert newest([stats, article], 1, now=NOW) == [article]
+
+
+def test_sitemaps_are_ordered_news_first_and_hubs_are_skipped() -> None:
+    urls = [
+        "https://example.com/athletic/sitemap-authors.xml",
+        "https://example.com/athletic/sitemap-players.xml",
+        "https://example.com/sitemaps/new/sitemap.xml.gz",
+        "https://example.com/tags/sitemap.xml",
+        "https://example.com/post-sitemap.xml",
+        "https://example.com/sitemaps/new/news.xml.gz",
+        "https://example.com/feed/google-news-sitemap-feed/sitemap-google-news",
+    ]
+    assert order_sitemaps(urls, ["authors", "players", "tags"]) == [
+        "https://example.com/sitemaps/new/news.xml.gz",
+        "https://example.com/feed/google-news-sitemap-feed/sitemap-google-news",
+        "https://example.com/sitemaps/new/sitemap.xml.gz",
+        "https://example.com/post-sitemap.xml",
+    ]
+
+
+def test_skip_words_match_whole_words_only() -> None:
+    urls = ["https://example.com/sitemap-contagion.xml", "https://example.com/sitemap-TAG.xml"]
+    assert order_sitemaps(urls, ["tag"]) == ["https://example.com/sitemap-contagion.xml"]

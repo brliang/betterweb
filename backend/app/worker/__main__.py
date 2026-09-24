@@ -1,8 +1,8 @@
 """Worker CLI: ``python -m app.worker <command>``.
 
-- ``cycle run``: run (or resume) the nightly crawl cycle (PLAN.md §6.1): fetch (M3), extract +
-  dedup (M4), embed + tag (M5), then scores (M6); M10 adds scheduling, per-stage re-runs and
-  alerts. Needs OPENROUTER_API_KEY.
+- ``cycle run``: run (or resume) the nightly crawl cycle (PLAN.md §6.1): fetch (M3) and extract +
+  dedup (M4), repeated for up to CYCLE_FETCH_ROUNDS rounds, then embed + tag (M5) and scores
+  (M6); M10 adds scheduling, per-stage re-runs and alerts. Needs OPENROUTER_API_KEY.
 - ``frontier seed URL [--feed FEED ...]``: enqueue a homepage as a pinned seed (for development;
   the API does this when a user pins a domain).
 - ``users login-link EMAIL``: print a one-time login link for EMAIL, creating the user if needed
@@ -22,7 +22,7 @@ import sqlalchemy as sa
 
 from app.auth import create_login_link, ensure_user
 from app.crawl.cycle import CYCLE_LOCK_KEY, finish_cycle, start_or_resume_cycle
-from app.crawl.fetch_stage import run_fetch_stage
+from app.crawl.fetch_stage import run_fetch_stage, start_next_round
 from app.crawl.frontier import SeedError, add_seed
 from app.crawl.http import create_client
 from app.db.session import create_engine, create_sessionmaker
@@ -73,10 +73,13 @@ async def run_cycle(settings: Settings) -> None:
                 create_client(settings) as client,
             ):
                 cycle = await start_or_resume_cycle(session, settings)
-                logger.info("crawl cycle %d: fetch stage", cycle.id)
-                await run_fetch_stage(session, cycle, client, settings)
-                logger.info("crawl cycle %d: extract stage", cycle.id)
-                await run_extract_stage(session, cycle, settings)
+                while True:
+                    logger.info("crawl cycle %d: fetch stage", cycle.id)
+                    await run_fetch_stage(session, cycle, client, settings)
+                    logger.info("crawl cycle %d: extract stage", cycle.id)
+                    await run_extract_stage(session, cycle, settings)
+                    if not await start_next_round(session, cycle, settings):
+                        break
                 logger.info("crawl cycle %d: embed stage", cycle.id)
                 meter = await open_meter(session, settings)
                 provider = OpenRouterEmbeddings(provider_client, settings, meter)

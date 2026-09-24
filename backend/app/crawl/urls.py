@@ -6,10 +6,13 @@ percent-encoding and query order are normalized, but the path's case and trailin
 left alone and http is not upgraded to https.
 """
 
+import ipaddress
 import re
 import string
 from collections.abc import Sequence
 from urllib.parse import quote, unquote, urlsplit, urlunsplit
+
+from publicsuffixlist import PublicSuffixList
 
 DEFAULT_PORTS = {"http": 80, "https": 443}
 UNRESERVED = frozenset(string.ascii_letters + string.digits + "-._~")
@@ -17,6 +20,9 @@ PATH_SAFE = "/:@!$&'()*+,;="
 """Reserved characters that keep their meaning in a path, so they stay unescaped."""
 QUERY_SAFE = "/:@!$'()*+,;=?"
 """The same for one `key=value` query piece (`&` separates pieces, so it is not listed)."""
+ICANN_SUFFIXES = PublicSuffixList(only_icann=True)
+"""The Public Suffix List's ICANN section only: its private section makes every
+`*.github.io` or `*.blogspot.com` blog a site of its own, but they share their host's servers."""
 
 _ESCAPE = re.compile(r"%([0-9A-Fa-f]{2})")
 _STRAY_PERCENT = re.compile(r"%(?![0-9A-Fa-f]{2})")
@@ -122,3 +128,23 @@ def same_site(host_a: str, host_b: str) -> bool:
     Moving between them is internal navigation (depth + 1), not an external hop.
     """
     return host_a.removeprefix("www.") == host_b.removeprefix("www.")
+
+
+def registrable_domain(host: str) -> str:
+    """The domain a host was registered under (`herman.bearblog.dev` is `bearblog.dev`): hosts
+    that share one usually share servers, so they share one politeness gate. An IP address, or
+    a host that is itself a public suffix, is its own."""
+    name = urlsplit(f"//{host}").hostname or host
+    try:
+        ipaddress.ip_address(name)
+    except ValueError:
+        registered: str | None = ICANN_SUFFIXES.privatesuffix(name)
+        return registered or name
+    return name
+
+
+def has_path_segment(canonical_url: str, names: frozenset[str]) -> bool:
+    """True when a segment of the URL's path, lowercased and without trailing digits
+    (`Login2` is `login`), is one of `names` (lowercase)."""
+    path = unquote(urlsplit(canonical_url).path).lower()
+    return any(segment.rstrip(string.digits) in names for segment in path.split("/"))

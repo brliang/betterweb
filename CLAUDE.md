@@ -124,8 +124,8 @@ same checks.
   §6.1-6.2) and refuses the placeholder `USER_AGENT`. Fetched bodies wait in `web.raw_pages`
   for M4's extract stage. URL canonicalization moved into M3; M4 adds rel=canonical.
 - M4 (extract + classify + dedup): done. `cycle run` runs fetch then extract; the extract
-  stage also follows links (so the crawl reaches one link level further per cycle) and
-  dedups. The bot is named `bribot`; its contact page is `docs/bot.md` (keep it true when crawler behavior changes).
+  stage also follows links and dedups. Fetch + extract repeat for `CYCLE_FETCH_ROUNDS` rounds
+  (one link level each); politeness gates are shared per registrable domain (`registrable_domain`). The bot is named `bribot`; its contact page is `docs/bot.md` (keep it true when crawler behavior changes).
 - M5 (embed + tag): done. `cycle run` now also runs the embed stage (needs
   `OPENROUTER_API_KEY`); spend is metered against the monthly cap and logged in
   `web.provider_spend`. Tagging keeps topics within `TAG_MAX_GAP` of a document's best one

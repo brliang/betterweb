@@ -70,3 +70,14 @@ def test_urls_beyond_the_limits_are_dropped() -> None:
         Candidate("https://example.com/ok", Position(5, 1)),
     ]
     assert merge_candidates(candidates, SETTINGS) == {"https://example.com/ok": Position(5, 1)}
+
+
+def test_account_pages_are_dropped() -> None:
+    candidates = [
+        Candidate("https://example.com/accounts/login/", Position(1, 0)),
+        Candidate("https://example.com/signup/", Position(1, 0)),
+        Candidate("https://example.com/posts/login-flows-explained/", Position(1, 0)),
+    ]
+    assert merge_candidates(candidates, SETTINGS) == {
+        "https://example.com/posts/login-flows-explained/": Position(1, 0)
+    }
