@@ -74,9 +74,10 @@ use up the one-time link.
 In development, React's StrictMode mounts each component twice, so every page load asks for
 the feed (and each "why this?") twice and the API stores both. Production builds don't.
 
-The crawler identifies itself as `bribot`. `cycle run` refuses to crawl until `USER_AGENT` names
-a real contact page for it (docs/PLAN.md §14 Q5): sites need a way to reach whoever runs the
-crawler.
+The crawler identifies itself as `bribot`; [docs/bot.md](docs/bot.md) tells site owners what it
+does and how to block it. `cycle run` refuses to crawl until `USER_AGENT` names a real contact
+page (docs/PLAN.md §14 Q5): sites need a way to reach whoever runs the crawler. If you run your
+own deployment, point it at your own page, not ours.
 
 To add an extraction test page: `uv run python -m scripts.capture_page URL NAME` (it checks
 robots.txt first), then fill in its license and expected values in

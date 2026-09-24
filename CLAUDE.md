@@ -125,7 +125,7 @@ same checks.
   for M4's extract stage. URL canonicalization moved into M3; M4 adds rel=canonical.
 - M4 (extract + classify + dedup): done. `cycle run` runs fetch then extract; the extract
   stage also follows links (so the crawl reaches one link level further per cycle) and
-  dedups. The bot is named `bribot`; its contact page (§14 Q5) is still open.
+  dedups. The bot is named `bribot`; its contact page is `docs/bot.md` (keep it true when crawler behavior changes).
 - M5 (embed + tag): done. `cycle run` now also runs the embed stage (needs
   `OPENROUTER_API_KEY`); spend is metered against the monthly cap and logged in
   `web.provider_spend`. Tagging keeps topics within `TAG_MAX_GAP` of a document's best one
