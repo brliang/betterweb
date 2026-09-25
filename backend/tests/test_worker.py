@@ -1,3 +1,4 @@
+import io
 from collections.abc import Iterator
 
 import pytest
@@ -43,3 +44,42 @@ def test_seed_rejects_an_uncrawlable_url() -> None:
 @pytest.mark.usefixtures("no_api_key")
 def test_embed_without_a_key_fails_cleanly() -> None:
     assert main(["taxonomy", "embed"]) == 1
+
+
+@pytest.fixture
+def fresh_settings() -> Iterator[None]:
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.mark.usefixtures("fresh_settings")
+def test_calendar_is_the_start_time_in_the_users_timezone(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("CYCLE_LOCAL_START", "01:00")
+    monkeypatch.setenv("CYCLE_TIMEZONE", "America/New_York")
+    assert main(["cycle", "calendar"]) == 0
+    assert capsys.readouterr().out == "*-*-* 01:00:00 America/New_York\n"
+
+
+def test_only_some_stages_can_be_rerun() -> None:
+    with pytest.raises(SystemExit):  # argparse: invalid choice
+        main(["cycle", "run", "--stage", "fetch"])
+
+
+@pytest.mark.usefixtures("fresh_settings")
+def test_an_alert_with_no_recipients_is_skipped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ALERT_EMAIL_TO", "[]")
+    monkeypatch.setattr("sys.stdin", io.StringIO("log lines"))
+    assert main(["alert", "send", "cycle failed"]) == 0
+
+
+@pytest.mark.usefixtures("fresh_settings")
+def test_an_alert_without_a_key_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALERT_EMAIL_TO", '["me@example.com"]')
+    monkeypatch.setenv("RESEND_API_KEY", "")
+    monkeypatch.setattr("sys.stdin", io.StringIO("log lines"))
+    assert main(["alert", "send", "cycle failed"]) == 1

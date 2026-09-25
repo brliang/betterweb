@@ -7,8 +7,9 @@ Each field can be overridden by an environment variable of the same name, case-i
 from datetime import time
 from functools import lru_cache
 from typing import Self
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.enums import DocumentType, InterestLevel, RankingPreset
@@ -44,7 +45,15 @@ class Settings(BaseSettings):
     database_url: SecretStr = SecretStr(
         "postgresql+psycopg://discovery:discovery@localhost:5432/discovery"
     )
-    """Contains a password, so it is masked in logs and reprs; read with .get_secret_value()."""
+    """Contains a password, so it is masked in logs and reprs; read with .get_secret_value().
+    A deployment connects each process as its own role (PLAN.md §4): the API as a member of
+    discovery_api, the worker as one of discovery_crawl."""
+    score_database_url: SecretStr | None = None
+    """The worker's connection for the scoring stage, as a member of discovery_score, the only
+    cycle stage that reads `usr`. DATABASE_URL when unset (local development)."""
+    db_login_passwords: dict[str, SecretStr] = {}
+    """Passwords of the login users `db logins` creates, by group role (`{"discovery_api":
+    "..."}`): each becomes `<role>_login`, a member of that role. Set only where migrations run."""
 
     # Crawl reach
     max_internal_depth: int = Field(default=5, ge=0)
@@ -82,7 +91,10 @@ class Settings(BaseSettings):
     cycle_time_limit_h: float = Field(default=4, gt=0)
     """Hard stop for the fetch stage."""
     cycle_local_start: time = time(2, 0)
-    """Nightly start time, in the user's timezone."""
+    """Nightly start time, in CYCLE_TIMEZONE; `cycle calendar` turns both into the systemd
+    timer's schedule."""
+    cycle_timezone: str = "UTC"
+    """IANA name of the timezone CYCLE_LOCAL_START is in: the V0 user's."""
 
     # Politeness
     per_domain_min_delay_s: float = Field(default=1.0, ge=0)
@@ -97,6 +109,9 @@ class Settings(BaseSettings):
     """The contact URL is a placeholder until the bot's contact page exists (PLAN.md §14 Q5);
     the worker refuses to crawl while it points at example.invalid. The product token before
     the `/` is the name robots.txt groups and robots meta tags address."""
+    allow_private_addresses: bool = False
+    """Let the crawler connect to loopback, private and other non-public addresses (PLAN.md
+    §14 Q6). Only for local end-to-end checks against a test server; never in a deployment."""
     fetch_timeout_s: float = Field(default=30, gt=0)
     robots_ttl_h: float = Field(default=24, gt=0)
     """How long a fetched robots.txt is trusted before it is fetched again."""
@@ -303,6 +318,18 @@ class Settings(BaseSettings):
     admin_emails: list[str] = []
     """Users who may see /admin (the author). Compared lowercased."""
 
+    # Alerts (PLAN.md §10): email when a cycle or backup fails, or the disk fills up.
+    alert_email_to: list[str] = []
+    """Who gets alerts; none are sent while this is empty."""
+    alert_email_from: str = "betterweb <onboarding@resend.dev>"
+    """Resend's shared sender, which may send only to the Resend account's own address; a
+    verified domain's address can send to anyone."""
+    resend_api_key: SecretStr | None = None
+    """Alerts go through Resend's HTTP API: DigitalOcean blocks outgoing SMTP from droplets."""
+    resend_base_url: str = "https://api.resend.com"
+    alert_max_body_chars: int = Field(default=20_000, ge=1)
+    """Longest alert body (log lines); the end is kept, since that's where a failure shows."""
+
     # Model providers (PLAN.md §6.4, §6.8). Never send user identifiers to a provider.
     provider_monthly_spend_cap_usd: float = Field(default=40, ge=0)
     """Hard stop on combined embedding + LLM spend."""
@@ -376,6 +403,15 @@ class Settings(BaseSettings):
         if missing:
             raise ValueError(f"no weights for {sorted(missing)}")
         return self
+
+    @field_validator("cycle_timezone")
+    @classmethod
+    def _known_timezone(cls, name: str) -> str:
+        try:
+            ZoneInfo(name)
+        except (ZoneInfoNotFoundError, ValueError) as error:
+            raise ValueError(f"unknown timezone {name!r}") from error
+        return name
 
     @model_validator(mode="after")
     def _every_chat_model_has_a_price(self) -> Self:

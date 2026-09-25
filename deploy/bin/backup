@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Nightly database backup to DigitalOcean Spaces (PLAN.md §10). One dump of everything except
+# the fetched pages waiting for extraction (the next crawl fetches them again); the bucket's
+# lifecycle rule (spaces-lifecycle.json) deletes backups after 14 days.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+dir=${BACKUP_DIR:-/var/tmp/betterweb-backups}
+name=discovery-$(date -u +%Y%m%dT%H%M%SZ).dump
+mkdir -p "$dir"
+trap 'rm -f "$dir/$name"' EXIT
+
+docker compose exec -T db pg_dump -U discovery -d discovery --format=custom \
+  --exclude-table-data=web.raw_pages >"$dir/$name"
+# A dump pg_restore can't read is no backup.
+docker compose exec -T db pg_restore --list <"$dir/$name" >/dev/null
+docker compose run --rm --no-deps -T --entrypoint sh backup \
+  -c 'aws s3 cp --no-progress "/backups/$1" "s3://$SPACES_BUCKET/db/$1"' sh "$name"
+echo "backed up $name ($(du -h "$dir/$name" | cut -f1))"

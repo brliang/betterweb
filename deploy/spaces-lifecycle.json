@@ -1,0 +1,10 @@
+{
+  "Rules": [
+    {
+      "ID": "expire-backups",
+      "Prefix": "db/",
+      "Status": "Enabled",
+      "Expiration": { "Days": 14 }
+    }
+  ]
+}

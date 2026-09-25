@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# OnFailure= handler (betterweb-alert@.service): emails the failed unit's log lines from its
+# last run to ALERT_EMAIL_TO.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+unit=$1
+invocation=$(systemctl show --property=InvocationID --value "$unit")
+if [[ -n $invocation ]]; then
+  logs=$(journalctl --no-pager --output=short-iso "_SYSTEMD_INVOCATION_ID=$invocation")
+else
+  logs=$(journalctl --no-pager --output=short-iso --unit="$unit" --lines=200)
+fi
+# --no-deps: the alert must go out even when the database is what failed.
+docker compose run --rm --no-deps -T worker alert send "$unit failed on $(hostname)" <<<"$logs"

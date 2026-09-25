@@ -15,6 +15,7 @@ def test_defaults_match_plan() -> None:
     assert s.cycle_recrawl_share == 0.2
     assert s.cycle_time_limit_h == 4
     assert s.cycle_local_start == time(2, 0)
+    assert s.allow_private_addresses is False  # PLAN.md §14 Q6
     assert s.per_domain_min_delay_s == 1.0
     assert s.per_domain_concurrency == 1
     assert s.global_concurrency == 50
@@ -89,3 +90,15 @@ def test_every_chat_model_needs_a_price(monkeypatch: pytest.MonkeyPatch) -> None
         ' "anthropic/claude-sonnet-5": {"input": 2, "output": 10}}',
     )
     assert Settings(_env_file=None).llm_prices["some/other-model"] == TokenPrices(input=1, output=2)
+
+
+def test_cycle_timezone_must_exist() -> None:
+    with pytest.raises(ValidationError, match="unknown timezone"):
+        Settings(_env_file=None, cycle_timezone="America/Nowhere")
+
+
+def test_db_login_passwords_come_from_json(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DB_LOGIN_PASSWORDS", '{"discovery_api": "secret"}')
+    passwords = Settings(_env_file=None).db_login_passwords
+    assert passwords["discovery_api"].get_secret_value() == "secret"
+    assert "secret" not in repr(passwords)

@@ -59,6 +59,7 @@ development tasks:
 cd backend
 uv run python -m app.worker frontier seed https://example.com/ --feed https://example.com/feed.xml
 uv run python -m app.worker cycle run    # run, or resume after a kill, the crawl cycle
+uv run python -m app.worker cycle run --stage scores   # re-run stages (extract, embed, scores)
 uv run python -m app.worker taxonomy embed   # embed changed topics and re-tag every document
 uv run python -m app.worker users login-link you@example.com   # one-time sign-in link
 docker compose run --rm worker cycle run
@@ -83,6 +84,10 @@ To add an extraction test page: `uv run python -m scripts.capture_page URL NAME`
 robots.txt first), then fill in its license and expected values in
 `backend/tests/fixtures/pages/manifest.toml`. Only save pages whose license allows
 redistribution.
+
+**Deploying:** [docs/DEPLOY.md](docs/DEPLOY.md) covers the production stack in `deploy/` (one
+DigitalOcean droplet, Caddy, systemd timers, backups to Spaces, email alerts). It also covers
+moving your preferences there with `users export` / `users import`.
 
 **Typed client rule:** never hand-write API types in the frontend. After changing any backend
 route or model, run `make codegen` and commit the result; CI fails if the client is stale.

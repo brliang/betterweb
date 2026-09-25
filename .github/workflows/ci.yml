@@ -87,3 +87,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: docker build backend
+      - run: docker build --file deploy/web.Dockerfile .
+      - name: Production compose file is valid
+        run: >
+          SITE_ADDRESS=ci.example POSTGRES_PASSWORD=x CRAWL_DB_PASSWORD=x SCORE_DB_PASSWORD=x
+          API_DB_PASSWORD=x OPENROUTER_API_KEY=x USER_AGENT=x
+          docker compose --file deploy/compose.yml config --quiet

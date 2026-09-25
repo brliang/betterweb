@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Emails an alert when the root disk is at least THRESHOLD percent full (PLAN.md §10).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+threshold=${1:?usage: check-disk THRESHOLD_PERCENT}
+used=$(df --output=pcent / | tail -n 1 | tr -dc '0-9')
+if ((used >= threshold)); then
+  { df -h /; echo; docker system df; } |
+    docker compose run --rm --no-deps -T worker alert send "disk ${used}% full on $(hostname)"
+fi

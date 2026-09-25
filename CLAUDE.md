@@ -137,10 +137,21 @@ same checks.
 - M7 (ranking + API): done. `app/rank/` ranks each feed or search page when requested and stores
   every served item's breakdown in `usr.recommendations` (reasons are derived from it). Auth is
   a one-time login link from `app.worker users login-link` plus a session cookie. The API tests
-  run as `discovery_api`. Pins cover their domain's `www.` twin (`app.pins`). Before deploying, the crawler must refuse private addresses (PLAN.md §14 Q6).
+  run as `discovery_api`. Pins cover their domain's `www.` twin (`app.pins`).
 - M8 (frontend): done. React Router pages in `frontend/src/pages/`: login, survey (until done),
   feed, search, settings, admin. Frontend tests run with Vitest (`make check` includes them).
 - M9 (summaries): done. `POST /documents/{id}/summary` (`app.summaries`) writes a cached,
   metered "Why might I like this?" note for opted-in users (403 otherwise). LLM calls go
   through the `SpendMeter` like embeddings; every chat model needs a price in `LLM_PRICES`.
   The card button shows only when the settings say opted in.
+- M10 (orchestration + deploy): built; see docs/DEPLOY.md. It stays open until the first full
+  cycle runs on the droplet. What's in it:
+  - `deploy/compose.yml` (Caddy serves the frontend), `deploy/bin/*` and the systemd units.
+  - The crawler connects only to public addresses (`app.crawl.addresses`, PLAN.md §14 Q6);
+    `ALLOW_PRIVATE_ADDRESSES` is for local test servers only. Never add a crawler request
+    that bypasses `create_client`.
+  - The worker connects as `discovery_crawl_login` and its scoring stage as
+    `discovery_score_login` (`SCORE_DATABASE_URL`); the API connects as `discovery_api_login`.
+    `db logins` creates these users. User commands (`users login-link/export/import`) run in
+    the `api` container.
+  - `cycle run --stage` re-runs extract/embed/scores; `alert send` emails through Resend.
