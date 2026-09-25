@@ -3,6 +3,7 @@
 1. Poll the feeds and sitemaps of domains in reach, and enqueue their new items.
 2. Plan: mark the best due frontier entries for this cycle, up to the page budget.
 3. Fetch the planned entries, each domain at its own polite pace, highest priority first.
+   A domain's pace follows its response times, and is kept for the next round and cycle.
    Entries that turn out not to need a request (robots.txt disallows them) free up budget, so
    planning and fetching repeat until the budget, the time limit or the due entries run out.
 
@@ -29,7 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crawl.frontier import Candidate, Position
 from app.crawl.http import ALLOWED_CONTENT_TYPES, FetchResult, Outcome, fetch
-from app.crawl.politeness import DeadlineReached, DomainGate, PrioritySlots
+from app.crawl.politeness import DeadlineReached, DomainGate, Pace, PrioritySlots
 from app.crawl.robots import Robots, fetch_robots
 from app.crawl.sources import (
     SITEMAP_EXTRA_TYPES,
@@ -95,6 +96,7 @@ class FetchStage:
         self._deadline = time.monotonic() + (deadline - now()).total_seconds()
         self._robots_ttl = timedelta(hours=settings.robots_ttl_h)
         self._slots = PrioritySlots(settings.global_concurrency)
+        self._pace = Pace.from_settings(settings)
         self._domains: dict[str, _Domain] = {}
         self._gates: dict[str, DomainGate] = {}
         """One per registrable domain: every `*.bearblog.dev` blog shares bearblog.dev's."""
@@ -117,6 +119,9 @@ class FetchStage:
         if self._stopped is None:
             await store.release_stale_plans()
             await self._fetch_rounds()
+        await store.save_delays(
+            {domain.info.id: domain.gate.delay_s for domain in self._domains.values()}
+        )
         reason = self._stopped or StopReason.DONE
         await store.set_stage(stopped=reason.value)
         logger.info(
@@ -142,19 +147,18 @@ class FetchStage:
             if host not in self._domains:
                 info = await self._store.domain(host)
                 settings = self._settings
-                delay_s = max(settings.per_domain_min_delay_s, info.crawl_delay_s or 0)
                 registered = registrable_domain(host)
                 gate = self._gates.get(registered)
                 if gate is None:
                     gate = self._gates[registered] = DomainGate(
-                        delay_s=delay_s,
+                        pace=self._pace,
+                        delay_s=info.learned_delay_s,
                         concurrency=settings.per_domain_concurrency,
                         backoff_max_s=settings.domain_backoff_max_s,
                         max_errors=settings.domain_max_consecutive_errors,
                     )
-                else:
-                    # A shared gate goes at the pace of its slowest host's Crawl-delay.
-                    gate.delay_s = max(gate.delay_s, delay_s)
+                # A shared gate goes no faster than its slowest host's Crawl-delay.
+                gate.require(info.crawl_delay_s or 0)
                 self._domains[host] = _Domain(info, gate)
             return self._domains[host]
 
@@ -178,7 +182,7 @@ class FetchStage:
                         info, origin, fetched, self._now()
                     )
                 if (delay := domain.robots.crawl_delay_s) is not None:
-                    domain.gate.delay_s = max(domain.gate.delay_s, delay)
+                    domain.gate.require(delay)
             return domain.robots
 
     async def _request(
@@ -200,6 +204,7 @@ class FetchStage:
                         self._stop(StopReason.BUDGET)
                         return None
                     self._budget_left -= 1
+                started = time.monotonic()
                 result = await fetch(
                     self._client,
                     url,
@@ -212,7 +217,7 @@ class FetchStage:
                 if result.outcome is Outcome.RETRY:
                     domain.gate.failed(result.retry_after_s)
                 else:
-                    domain.gate.succeeded()
+                    domain.gate.succeeded(time.monotonic() - started)
                 return result
         except DeadlineReached:
             self._stop(StopReason.TIME)

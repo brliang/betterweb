@@ -25,6 +25,7 @@ SETTINGS_OPTIONS: dict[str, object] = {
     "_env_file": None,
     "user_agent": "bribot/0.1 (+https://bot.example/about)",
     "per_domain_min_delay_s": 0,
+    "per_domain_start_delay_s": 0,
     "domain_backoff_max_s": 0,
 }
 HOME = "https://example.com/"
@@ -423,6 +424,24 @@ async def test_crawl_delay_is_obeyed(session: AsyncSession) -> None:
     assert all(gap >= 0.2 for gap in gaps)
 
 
+async def test_a_quick_domain_speeds_up_and_keeps_its_pace(session: AsyncSession) -> None:
+    pages = [f"https://quick.example/{index}" for index in range(3)]
+    web = FakeWeb(dict.fromkeys(pages, html()))
+    for page in pages:
+        await add_seed(session, page, settings())
+    pace = settings(per_domain_min_delay_s=0.01, per_domain_start_delay_s=0.2)
+    await run(session, web, pace, now=NOW)
+
+    domain = await session.scalar(
+        sa.select(Domain)
+        .where(Domain.host == "quick.example")
+        .execution_options(populate_existing=True)
+    )
+    assert domain is not None
+    assert domain.learned_delay_s is not None
+    assert 0.01 <= domain.learned_delay_s < 0.2 / 2  # halved at least once per page
+
+
 async def test_hosts_under_one_registrable_domain_share_a_gate(session: AsyncSession) -> None:
     """Blogs on one platform (`*.blogs.example`) are paced as one site; others aren't held up."""
     starts: dict[str, list[float]] = {"shared": [], "other": []}
@@ -442,7 +461,8 @@ async def test_hosts_under_one_registrable_domain_share_a_gate(session: AsyncSes
     web.routes["https://other.example/"] = timed("other", html())
     for page in [*blogs, "https://other.example/"]:
         await add_seed(session, page, settings())
-    await run(session, web, settings(per_domain_min_delay_s=0.1), now=NOW)
+    pace = settings(per_domain_min_delay_s=0.1, per_domain_start_delay_s=0.1)
+    await run(session, web, pace, now=NOW)
 
     shared = sorted(starts["shared"])
     assert len(shared) == 6  # three robots.txt files and three pages

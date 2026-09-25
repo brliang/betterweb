@@ -266,6 +266,23 @@ async def test_plan_skips_excluded_domains(session: AsyncSession) -> None:
     assert await planned_urls(session, cycle) == {"b.example/x"}
 
 
+async def test_plan_caps_each_domain_by_its_learned_delay(session: AsyncSession) -> None:
+    cycle = await make_cycle(session)
+    for host in ("quick", "slow", "new"):
+        for index in range(10):
+            await add_entry(session, f"https://{host}.example/{index}")
+    for host, delay in (("quick", 0.5), ("slow", 2.5)):
+        await session.execute(
+            sa.update(Domain).where(Domain.host == f"{host}.example").values(learned_delay_s=delay)
+        )
+    options = Settings(_env_file=None, per_domain_min_delay_s=0.5, per_domain_start_delay_s=1)
+    await plan(session, cycle_id=cycle.id, room=30, window_s=2.5, settings=options, now=NOW)
+
+    planned = await planned_urls(session, cycle)
+    hosts = [url.split(".", 1)[0] for url in planned]
+    assert {host: hosts.count(host) for host in hosts} == {"quick": 5, "slow": 1, "new": 2}
+
+
 async def test_release_stale_plans(session: AsyncSession) -> None:
     old, current = await make_cycle(session), await make_cycle(session)
     await add_entry(session, "https://a.example/old")

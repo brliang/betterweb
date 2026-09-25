@@ -216,8 +216,9 @@ _ORDER = {
 
 def _plan_statement(reason: FrontierReason) -> sa.TextClause:
     in_domain, overall = _ORDER[reason]
-    # A domain gets at most as many entries as its delay lets us fetch in the time left;
-    # a domain with no delay at all is capped only by the limit.
+    # A domain gets at most as many entries as its delay lets us fetch in the time left: the
+    # delay its gate settled on last time, or the starting one, never below the floor or its
+    # Crawl-delay. A domain with no delay at all is capped only by the limit.
     return sa.text(
         "WITH planned AS ("  # noqa: S608 (constant fragments; values are bound)
         "  SELECT u.domain_id, count(*) AS n FROM web.frontier f "
@@ -227,7 +228,8 @@ def _plan_statement(reason: FrontierReason) -> sa.TextClause:
         "  u.change_count::float8 / greatest(u.fetch_count, 1) AS change_rate, "
         f"  row_number() OVER (PARTITION BY u.domain_id ORDER BY {in_domain}) AS domain_rank, "
         "  coalesce(floor(:window_s / nullif(greatest(:min_delay_s, "
-        "  coalesce(d.crawl_delay_s, 0)), 0)) * :concurrency, :limit) "
+        "  coalesce(d.crawl_delay_s, 0), coalesce(d.learned_delay_s, :start_delay_s)), 0)) "
+        "  * :concurrency, :limit) "
         "  - coalesce(p.n, 0) AS domain_room "
         "  FROM web.frontier f JOIN web.urls u ON u.id = f.url_id "
         "  JOIN web.domains d ON d.id = u.domain_id "
@@ -277,6 +279,7 @@ async def plan(
                 "now": now,
                 "window_s": window_s,
                 "min_delay_s": settings.per_domain_min_delay_s,
+                "start_delay_s": settings.per_domain_start_delay_s,
                 "concurrency": settings.per_domain_concurrency,
                 "excluded": sorted(exclude_domain_ids),
             },

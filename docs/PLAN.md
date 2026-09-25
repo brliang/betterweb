@@ -84,7 +84,7 @@ Use two Postgres schemas: `web` (shared graph) and `usr` (user store).
 **Why Documents are separate from URLs and Domains:** a *Document* is one piece of content, the unit that is ranked, recommended, liked or hidden. It has a `type` (article, thread, paper, PDF, video, page…); do not assume articles. Many URLs can resolve to one Document (syndication, tracking params, AMP, mirrors); the dedup stage owns that mapping. A *Domain* carries trust and, later, publisher ownership.
 
 - **`domains`**
-  - Fields: `id`, `host` (normalized, unique), `status`, `robots_txt`, `robots_fetched_at`, `crawl_delay_s`, `feed_urls text[]`, `sitemap_urls text[]` (from robots.txt), `first_seen_at`, `last_crawled_at`.
+  - Fields: `id`, `host` (normalized, unique), `status`, `robots_txt`, `robots_fetched_at`, `crawl_delay_s`, `learned_delay_s` (the pace its gate settled on, §6.2), `feed_urls text[]`, `sitemap_urls text[]` (from robots.txt), `first_seen_at`, `last_crawled_at`.
   - Reserved for V1: `verified_owner_id` (nullable, no FK yet).
 - **`urls`**
   - Fields: `id`, `url` (canonicalized, unique), `domain_id`, `document_id` (nullable until deduped), `http_status`, `etag`, `last_modified`, `content_hash`, `redirect_to_url_id` (where the last fetch redirected; dedup maps the URL to the target's document), `first_seen_at`, `last_fetched_at`, `fetch_count`, `change_count`.
@@ -155,7 +155,8 @@ All of these live in one Pydantic settings module and can be overridden via envi
 | `CYCLE_FETCH_ROUNDS` | 3 | Fetch + extract rounds per cycle; each fetches the links the last found (§6.1) |
 | `CYCLE_TIME_LIMIT_H` | 4 | Hard stop for the fetch stage |
 | `CYCLE_LOCAL_START` | 02:00 | In the user's timezone |
-| `PER_DOMAIN_MIN_DELAY_S` | 1.0 | Or robots `Crawl-delay` if larger; per registrable domain (§6.2) |
+| `PER_DOMAIN_START_DELAY_S` / `PER_DOMAIN_MIN_DELAY_S` / `PER_DOMAIN_MAX_DELAY_S` | 1.0 / 0.5 / 10 | Adaptive delay per registrable domain (§6.2); robots `Crawl-delay` wins if larger |
+| `PER_DOMAIN_LATENCY_FACTOR` | 2 | Target delay as a multiple of the last response time (§6.2) |
 | `PER_DOMAIN_CONCURRENCY` | 1 | Per registrable domain (§6.2) |
 | `GLOBAL_CONCURRENCY` | 50 | |
 | `MAX_PAGE_BYTES` | 5 MB | |
@@ -264,7 +265,10 @@ priority(url) = Σ_{p ∈ known parents} global_pr(p) / outdegree(p)  +  λ · d
   - Use protego: the longest match wins, and `*`/`$` patterns work. The standard library's parser does neither.
   - A 4xx means no rules. A 5xx or no answer means nothing may be fetched, unless an earlier copy is cached.
   - A disallowed URL is postponed until the next refresh and costs no budget.
-- Space requests to a domain by `max(PER_DOMAIN_MIN_DELAY_S, Crawl-delay)`, measured from the previous response.
+- Space requests to a domain by an adaptive delay, measured from the previous response. *(Changed 2026-09-25 from a fixed `PER_DOMAIN_MIN_DELAY_S` of 1 s, to crawl quick sites faster and slow ones more gently.)*
+  - It starts at `PER_DOMAIN_START_DELAY_S`. Each answered request moves it halfway toward `PER_DOMAIN_LATENCY_FACTOR` × that response's duration, within `PER_DOMAIN_MIN_DELAY_S` and `PER_DOMAIN_MAX_DELAY_S`, and never below the robots `Crawl-delay`.
+  - A 429, 5xx or timeout resets it to at least the starting delay, besides the backoff below.
+  - Each round saves it as `domains.learned_delay_s`: the next round or cycle starts there, and planning caps the domain's entries by it.
   - Pacing is per **registrable domain** (the ICANN section of the Public Suffix List): every `*.bearblog.dev`, `*.substack.com` or `*.github.io` blog shares one gate (delay, concurrency and backoff), since they share servers. The gate uses the largest `Crawl-delay` among its hosts; robots.txt itself stays per host. *(Added 2026-09-24, before multi-round cycles began reaching many blogs on one platform at once.)*
   - Planning still caps each domain's entries separately, so a platform's many hosts can be over-planned; the leftovers are released for the next cycle.
 - Use conditional GET (`ETag`, `If-Modified-Since`).
