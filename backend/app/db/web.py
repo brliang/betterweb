@@ -30,6 +30,9 @@ class Domain(Base):
     robots_fetched_at: Mapped[datetime | None]
     crawl_delay_s: Mapped[float | None]
     """From robots.txt Crawl-delay, if set."""
+    learned_delay_s: Mapped[float | None]
+    """The delay between requests its gate adapted to by the end of the last fetch round
+    (app.crawl.politeness), where the next one starts."""
     feed_urls: Mapped[list[str]] = mapped_column(ARRAY(sa.Text), server_default=EMPTY_TEXT_ARRAY)
     sitemap_urls: Mapped[list[str]] = mapped_column(ARRAY(sa.Text), server_default=EMPTY_TEXT_ARRAY)
     first_seen_at: Mapped[datetime] = mapped_column(server_default=NOW)

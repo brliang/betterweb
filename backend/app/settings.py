@@ -97,9 +97,18 @@ class Settings(BaseSettings):
     """IANA name of the timezone CYCLE_LOCAL_START is in: the V0 user's."""
 
     # Politeness
-    per_domain_min_delay_s: float = Field(default=1.0, ge=0)
-    """Between requests to one registrable domain; a larger robots.txt Crawl-delay (the largest
-    of its hosts') is used instead."""
+    per_domain_start_delay_s: float = Field(default=1.0, ge=0)
+    """Between requests to one registrable domain until its response times are known (the
+    last cycle's delay is used when there is one), and again after a 429, 5xx or timeout."""
+    per_domain_min_delay_s: float = Field(default=0.5, ge=0)
+    """Shortest delay, for a domain that answers quickly; a larger robots.txt Crawl-delay (the
+    largest of its hosts') is used instead."""
+    per_domain_max_delay_s: float = Field(default=10.0, ge=0)
+    """Longest delay slow answers alone lead to; errors back off further (DOMAIN_BACKOFF_MAX_S)
+    and a larger Crawl-delay still wins."""
+    per_domain_latency_factor: float = Field(default=2.0, gt=0)
+    """Target delay as a multiple of the last response's duration: at 2, one connection keeps a
+    server busy at most a third of the time. Each answer moves the delay halfway there."""
     per_domain_concurrency: int = Field(default=1, ge=1)
     """Requests at once to one registrable domain (every `*.bearblog.dev` blog is one), which
     also shares its pace: the delay and backoff."""
@@ -402,6 +411,20 @@ class Settings(BaseSettings):
         ]
         if missing:
             raise ValueError(f"no weights for {sorted(missing)}")
+        return self
+
+    @model_validator(mode="after")
+    def _delays_in_order(self) -> Self:
+        delays = (
+            self.per_domain_min_delay_s,
+            self.per_domain_start_delay_s,
+            self.per_domain_max_delay_s,
+        )
+        if list(delays) != sorted(delays):
+            raise ValueError(
+                "expected PER_DOMAIN_MIN_DELAY_S <= PER_DOMAIN_START_DELAY_S <= "
+                f"PER_DOMAIN_MAX_DELAY_S, got {delays}"
+            )
         return self
 
     @field_validator("cycle_timezone")

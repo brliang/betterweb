@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from app.crawl.politeness import DeadlineReached, DomainGate, PrioritySlots
+from app.crawl.politeness import DeadlineReached, DomainGate, Pace, PrioritySlots
 
 pytestmark = pytest.mark.anyio
 
@@ -18,11 +18,11 @@ class FakeClock:
         self.now += seconds
 
 
-def gate(clock: FakeClock, **overrides: float) -> DomainGate:
+def gate(clock: FakeClock, pace: Pace | None = None, **overrides: float) -> DomainGate:
     options = {"delay_s": 2.0, "concurrency": 1, "backoff_max_s": 30.0, "max_errors": 3}
     options.update(overrides)
     return DomainGate(
-        delay_s=options["delay_s"],
+        pace=pace or Pace.fixed(options["delay_s"]),
         concurrency=int(options["concurrency"]),
         backoff_max_s=options["backoff_max_s"],
         max_errors=int(options["max_errors"]),
@@ -73,12 +73,76 @@ async def test_consecutive_errors_exhaust_the_domain() -> None:
     domain = gate(FakeClock(), max_errors=3)
     domain.failed()
     domain.failed()
-    domain.succeeded()
+    domain.succeeded(0.1)
     domain.failed()
     domain.failed()
     assert not domain.exhausted
     domain.failed()
     assert domain.exhausted
+
+
+ADAPTIVE = Pace(start_s=1, min_s=0.5, max_s=10, latency_factor=2)
+
+
+def test_quick_answers_shorten_the_delay_down_to_the_floor() -> None:
+    domain = gate(FakeClock(), ADAPTIVE)
+    assert domain.delay_s == 1
+    domain.succeeded(0.1)  # target 0.2, floored at 0.5: halfway from 1 is 0.75
+    assert domain.delay_s == 0.75
+    for _ in range(20):
+        domain.succeeded(0.1)
+    assert domain.delay_s == pytest.approx(0.5)
+
+
+def test_slow_answers_lengthen_the_delay_up_to_the_cap() -> None:
+    domain = gate(FakeClock(), ADAPTIVE)
+    domain.succeeded(2)  # target 4
+    assert domain.delay_s == 2.5
+    for _ in range(20):
+        domain.succeeded(30)
+    assert domain.delay_s == pytest.approx(10)
+
+
+async def test_the_adapted_delay_spaces_the_next_request() -> None:
+    clock = FakeClock()
+    domain = gate(clock, ADAPTIVE)
+    slots = PrioritySlots(1)
+    async with domain.turn(slots, 0):
+        clock.now += 2
+        domain.succeeded(2)
+    async with domain.turn(slots, 0):
+        assert clock.now == 104.5  # 2.5 s after the first request finished
+
+
+def test_an_error_forgets_the_speed_up() -> None:
+    domain = gate(FakeClock(), ADAPTIVE)
+    for _ in range(20):
+        domain.succeeded(0.1)
+    domain.failed()
+    assert domain.delay_s == 1
+    domain = gate(FakeClock(), ADAPTIVE, backoff_max_s=0)
+    domain.succeeded(2)
+    domain.failed()
+    assert domain.delay_s == 2.5  # already slower than the start
+
+
+def test_a_crawl_delay_is_a_floor_even_above_the_cap() -> None:
+    domain = gate(FakeClock(), ADAPTIVE)
+    domain.require(3)
+    assert domain.delay_s == 3
+    domain.succeeded(0)
+    assert domain.delay_s == 3
+    domain.require(20)
+    domain.succeeded(0)
+    assert domain.delay_s == 20
+
+
+@pytest.mark.parametrize(("learned", "expected"), [(None, 1), (0.6, 0.6), (0.1, 0.5), (60, 10)])
+def test_a_learned_delay_is_where_the_gate_starts(learned: float | None, expected: float) -> None:
+    domain = DomainGate(
+        pace=ADAPTIVE, concurrency=1, backoff_max_s=0, max_errors=1, delay_s=learned
+    )
+    assert domain.delay_s == expected
 
 
 async def test_a_turn_past_the_deadline_is_refused() -> None:

@@ -8,6 +8,7 @@ marked with the cycle (PLAN.md §6.1: stages are idempotent and resumable).
 import asyncio
 import hashlib
 from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -44,6 +45,7 @@ class DomainInfo:
     robots_txt: str | None
     robots_fetched_at: datetime | None
     crawl_delay_s: float | None
+    learned_delay_s: float | None
 
 
 @dataclass(frozen=True)
@@ -150,7 +152,19 @@ class CrawlStore:
                 domain.robots_txt,
                 domain.robots_fetched_at,
                 domain.crawl_delay_s,
+                domain.learned_delay_s,
             )
+
+    async def save_delays(self, delays: Mapping[int, float]) -> None:
+        """Keep each domain's adapted delay (by domain id) for the next round or cycle."""
+        if not delays:
+            return
+        async with self._lock:
+            await self._session.execute(
+                sa.update(Domain),
+                [{"id": domain, "learned_delay_s": delay} for domain, delay in delays.items()],
+            )
+            await self._commit()
 
     async def save_robots(
         self, domain: DomainInfo, origin: str, fetched: RobotsFetch, now: datetime

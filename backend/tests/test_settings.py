@@ -16,7 +16,8 @@ def test_defaults_match_plan() -> None:
     assert s.cycle_time_limit_h == 4
     assert s.cycle_local_start == time(2, 0)
     assert s.allow_private_addresses is False  # PLAN.md §14 Q6
-    assert s.per_domain_min_delay_s == 1.0
+    assert (s.per_domain_start_delay_s, s.per_domain_min_delay_s) == (1.0, 0.5)
+    assert (s.per_domain_max_delay_s, s.per_domain_latency_factor) == (10.0, 2.0)
     assert s.per_domain_concurrency == 1
     assert s.global_concurrency == 50
     assert s.max_page_bytes == 5 * 1024 * 1024
@@ -102,3 +103,8 @@ def test_db_login_passwords_come_from_json(monkeypatch: pytest.MonkeyPatch) -> N
     passwords = Settings(_env_file=None).db_login_passwords
     assert passwords["discovery_api"].get_secret_value() == "secret"
     assert "secret" not in repr(passwords)
+
+
+def test_delays_must_be_in_order() -> None:
+    with pytest.raises(ValidationError, match="PER_DOMAIN_MIN_DELAY_S"):
+        Settings(_env_file=None, per_domain_min_delay_s=2)
