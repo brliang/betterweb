@@ -79,8 +79,9 @@ class DomainGate:
     `concurrency` > 1). The delay follows the domain's response times (see Pace), never below
     a floor that `require` raises for a robots.txt Crawl-delay. A 429, 5xx or timeout resets
     it to at least the starting delay and doubles the pause, up to `backoff_max_s` (a longer
-    Retry-After is honored up to the same cap); after `max_errors` in a row the gate is
-    exhausted and the domain is left alone for the rest of the cycle.
+    Retry-After is honored up to the same cap). A refusal (401/403) also resets the delay. After
+    `max_errors` errors or `max_refusals` refusals in a row the gate is exhausted and the domain
+    is left alone for the rest of the cycle.
     """
 
     def __init__(
@@ -90,6 +91,7 @@ class DomainGate:
         concurrency: int,
         backoff_max_s: float,
         max_errors: int,
+        max_refusals: int,
         delay_s: float | None = None,
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
@@ -100,16 +102,18 @@ class DomainGate:
         self.delay_s = self._bounded(pace.start_s if delay_s is None else delay_s)
         self._backoff_max_s = backoff_max_s
         self._max_errors = max_errors
+        self._max_refusals = max_refusals
         self._clock = clock
         self._sleep = sleep
         self._slots = asyncio.Semaphore(concurrency)
         self._lock = asyncio.Lock()
         self._next_start = clock()
         self._errors = 0
+        self._refusals = 0
 
     @property
     def exhausted(self) -> bool:
-        return self._errors >= self._max_errors
+        return self._errors >= self._max_errors or self._refusals >= self._max_refusals
 
     @asynccontextmanager
     async def turn(
@@ -143,8 +147,14 @@ class DomainGate:
     def succeeded(self, response_s: float) -> None:
         """The domain answered a request in `response_s` seconds."""
         self._errors = 0
+        self._refusals = 0
         target = self._bounded(response_s * self._pace.latency_factor)
         self.delay_s = (self.delay_s + target) / 2
+
+    def refused(self) -> None:
+        """The domain refused a request (401/403): a quick refusal never speeds the crawl up."""
+        self._refusals += 1
+        self.delay_s = self._bounded(max(self.delay_s, self._pace.start_s))
 
     def failed(self, retry_after_s: float | None = None) -> None:
         self._errors += 1

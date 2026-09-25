@@ -33,6 +33,8 @@ If you found this page in your server logs, this is what the bot is doing and ho
   `*.bearblog.dev` shares a single pace.
 - It slows down when it gets `429` or `5xx` responses, doubling its wait each time, and stops
   visiting a site for the rest of the day after five errors in a row.
+- It treats `401` and `403` answers as a refusal: they never speed it up, and after three in a
+  row it stops visiting the site for the rest of the day.
 - It honors `noindex` and `nofollow` in robots meta tags and `X-Robots-Tag` headers, and does
   not follow links marked `rel="nofollow"`, `"ugc"` or `"sponsored"`.
 - It never logs in, fills in forms or runs JavaScript, and skips login, sign-up and checkout

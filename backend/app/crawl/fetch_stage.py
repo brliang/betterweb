@@ -59,6 +59,8 @@ POLL_PRIORITY = 0.0
 MAX_POLL_REDIRECTS = 5
 """Hops followed when a feed has moved (feeds move often; see the suggested-sources history)."""
 SITEMAP_TYPES = ALLOWED_CONTENT_TYPES | SITEMAP_EXTRA_TYPES
+REFUSED_STATUSES = frozenset({401, 403})
+"""Answers that refuse the crawler rather than the page (DomainGate.refused)."""
 
 
 class StopReason(StrEnum):
@@ -156,6 +158,7 @@ class FetchStage:
                         concurrency=settings.per_domain_concurrency,
                         backoff_max_s=settings.domain_backoff_max_s,
                         max_errors=settings.domain_max_consecutive_errors,
+                        max_refusals=settings.domain_max_consecutive_refusals,
                     )
                 # A shared gate goes no faster than its slowest host's Crawl-delay.
                 gate.require(info.crawl_delay_s or 0)
@@ -216,6 +219,8 @@ class FetchStage:
                 )
                 if result.outcome is Outcome.RETRY:
                     domain.gate.failed(result.retry_after_s)
+                elif result.status in REFUSED_STATUSES:
+                    domain.gate.refused()
                 else:
                     domain.gate.succeeded(time.monotonic() - started)
                 return result

@@ -128,6 +128,9 @@ class Settings(BaseSettings):
     """Longest pause for a domain after 429/5xx responses (delays double per error)."""
     domain_max_consecutive_errors: int = Field(default=5, ge=1)
     """After this many 429/5xx/timeouts in a row, a domain is skipped for the rest of the cycle."""
+    domain_max_consecutive_refusals: int = Field(default=3, ge=1)
+    """After this many 401/403 answers in a row, a domain that refuses the crawler (often every
+    request from a datacenter address) is skipped for the rest of the cycle. Never evaded."""
 
     # Frontier (PLAN.md §6.2)
     recrawl_after_h: float = Field(default=20, gt=0)
