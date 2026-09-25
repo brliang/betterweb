@@ -267,13 +267,14 @@ priority(url) = Σ_{p ∈ known parents} global_pr(p) / outdegree(p)  +  λ · d
   - A disallowed URL is postponed until the next refresh and costs no budget.
 - Space requests to a domain by an adaptive delay, measured from the previous response. *(Changed 2026-09-25 from a fixed `PER_DOMAIN_MIN_DELAY_S` of 1 s, to crawl quick sites faster and slow ones more gently.)*
   - It starts at `PER_DOMAIN_START_DELAY_S`. Each answered request moves it halfway toward `PER_DOMAIN_LATENCY_FACTOR` × that response's duration, within `PER_DOMAIN_MIN_DELAY_S` and `PER_DOMAIN_MAX_DELAY_S`, and never below the robots `Crawl-delay`.
-  - A 429, 5xx or timeout resets it to at least the starting delay, besides the backoff below.
+  - A 429, 5xx or timeout resets it to at least the starting delay, besides the backoff below. So does a 401/403, which is never taken as a sign the site is quick.
   - Each round saves it as `domains.learned_delay_s`: the next round or cycle starts there, and planning caps the domain's entries by it.
   - Pacing is per **registrable domain** (the ICANN section of the Public Suffix List): every `*.bearblog.dev`, `*.substack.com` or `*.github.io` blog shares one gate (delay, concurrency and backoff), since they share servers. The gate uses the largest `Crawl-delay` among its hosts; robots.txt itself stays per host. *(Added 2026-09-24, before multi-round cycles began reaching many blogs on one platform at once.)*
   - Planning still caps each domain's entries separately, so a platform's many hosts can be over-planned; the leftovers are released for the next cycle.
 - Use conditional GET (`ETag`, `If-Modified-Since`).
 - Back off exponentially on 429/5xx/timeouts.
   - Per domain: pauses double up to `DOMAIN_BACKOFF_MAX_S` (a longer `Retry-After` is honored up to the same cap). After `DOMAIN_MAX_CONSECUTIVE_ERRORS` in a row, the domain is skipped until the next cycle.
+  - Refusals: after `DOMAIN_MAX_CONSECUTIVE_REFUSALS` (3) 401/403 answers in a row, the domain is skipped until the next cycle; its unfetched entries stay in the frontier. *(Added 2026-09-25: from the droplet, nytimes.com refused every page with 403, and the crawler kept asking for each one.)*
   - Per URL: retry after `FETCH_RETRY_BASE_H`, doubling. After `FETCH_MAX_FAILURES`, drop the URL.
 - Enforce the content-type allowlist (HTML, PDF, RSS/Atom/XML) and `MAX_PAGE_BYTES`, counted after decompression.
 

@@ -342,6 +342,23 @@ async def test_a_domain_that_keeps_failing_is_left_alone(session: AsyncSession) 
     assert cycle.stats["fetch"]["counts"]["exhausted_domains"] == 1  # type: ignore[index]
 
 
+async def test_a_domain_that_refuses_us_is_left_alone(session: AsyncSession) -> None:
+    pages = [f"https://walled.example/{index}" for index in range(5)]
+    web = FakeWeb({page: httpx2.Response(403) for page in pages})
+    web.routes["https://fine.example/"] = html()
+    for page in [*pages, "https://fine.example/"]:
+        await add_seed(session, page, settings())
+    options = settings(domain_max_consecutive_refusals=2)
+    reason, cycle = await run(session, web, options, now=NOW)
+
+    assert reason is StopReason.DONE
+    assert len([url for url in web.urls if "walled" in url and "robots" not in url]) == 2
+    assert web.count("https://fine.example/") == 1
+    assert cycle.stats["fetch"]["counts"]["exhausted_domains"] == 1  # type: ignore[index]
+    unfetched = [page for page in pages if web.count(page) == 0]
+    assert all([await frontier(session, page) for page in unfetched])  # kept for next cycle
+
+
 async def test_robots_txt_decides_what_is_fetched(session: AsyncSession) -> None:
     web = FakeWeb(
         {

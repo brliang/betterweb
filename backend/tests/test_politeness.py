@@ -19,13 +19,20 @@ class FakeClock:
 
 
 def gate(clock: FakeClock, pace: Pace | None = None, **overrides: float) -> DomainGate:
-    options = {"delay_s": 2.0, "concurrency": 1, "backoff_max_s": 30.0, "max_errors": 3}
+    options = {
+        "delay_s": 2.0,
+        "concurrency": 1,
+        "backoff_max_s": 30.0,
+        "max_errors": 3,
+        "max_refusals": 3,
+    }
     options.update(overrides)
     return DomainGate(
         pace=pace or Pace.fixed(options["delay_s"]),
         concurrency=int(options["concurrency"]),
         backoff_max_s=options["backoff_max_s"],
         max_errors=int(options["max_errors"]),
+        max_refusals=int(options["max_refusals"]),
         clock=clock,
         sleep=clock.sleep,
     )
@@ -126,6 +133,19 @@ def test_an_error_forgets_the_speed_up() -> None:
     assert domain.delay_s == 2.5  # already slower than the start
 
 
+def test_refusals_never_speed_up_and_exhaust_the_domain() -> None:
+    domain = gate(FakeClock(), ADAPTIVE, max_refusals=2)
+    for _ in range(20):
+        domain.succeeded(0.1)
+    domain.refused()
+    assert domain.delay_s == 1  # back to the start, however quick the refusal
+    domain.succeeded(0.1)  # an answer in between starts the count over
+    domain.refused()
+    assert not domain.exhausted
+    domain.refused()
+    assert domain.exhausted
+
+
 def test_a_crawl_delay_is_a_floor_even_above_the_cap() -> None:
     domain = gate(FakeClock(), ADAPTIVE)
     domain.require(3)
@@ -140,7 +160,7 @@ def test_a_crawl_delay_is_a_floor_even_above_the_cap() -> None:
 @pytest.mark.parametrize(("learned", "expected"), [(None, 1), (0.6, 0.6), (0.1, 0.5), (60, 10)])
 def test_a_learned_delay_is_where_the_gate_starts(learned: float | None, expected: float) -> None:
     domain = DomainGate(
-        pace=ADAPTIVE, concurrency=1, backoff_max_s=0, max_errors=1, delay_s=learned
+        pace=ADAPTIVE, concurrency=1, backoff_max_s=0, max_errors=1, max_refusals=1, delay_s=learned
     )
     assert domain.delay_s == expected
 
