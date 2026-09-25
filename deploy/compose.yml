@@ -1,0 +1,124 @@
+# Production stack for one small VM (PLAN.md §10; setup in docs/DEPLOY.md). Secrets come from
+# deploy/.env (see .env.example); each service gets only the ones it needs, and connects to
+# Postgres as its own role (PLAN.md §4).
+name: betterweb
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
+x-backend: &backend
+  build: ../backend
+  image: betterweb-backend
+  logging: *logging
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    logging: *logging
+    # Sized for a 4 GB droplet; maintenance_work_mem speeds up HNSW index builds.
+    command: >
+      postgres -c shared_buffers=512MB -c effective_cache_size=2GB
+      -c maintenance_work_mem=512MB -c work_mem=16MB
+    shm_size: 1g
+    environment:
+      POSTGRES_USER: discovery
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in deploy/.env}
+      POSTGRES_DB: discovery
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U discovery -d discovery"]
+      interval: 2s
+      retries: 30
+
+  # Runs as the owner: applies migrations, then creates or updates the login users.
+  migrate:
+    <<: *backend
+    command: sh -c "alembic upgrade head && python -m app.worker db logins"
+    environment:
+      DATABASE_URL: postgresql+psycopg://discovery:${POSTGRES_PASSWORD}@db:5432/discovery
+      DB_LOGIN_PASSWORDS: >-
+        {"discovery_crawl": "${CRAWL_DB_PASSWORD:?}", "discovery_score": "${SCORE_DB_PASSWORD:?}",
+        "discovery_api": "${API_DB_PASSWORD:?}"}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    <<: *backend
+    restart: unless-stopped
+    command: >
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+      --proxy-headers --forwarded-allow-ips=*
+    environment:
+      DATABASE_URL: postgresql+psycopg://discovery_api_login:${API_DB_PASSWORD}@db:5432/discovery
+      APP_BASE_URL: ${APP_BASE_URL:-https://${SITE_ADDRESS:?}}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-[]}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?}
+      PROVIDER_MONTHLY_SPEND_CAP_USD: ${PROVIDER_MONTHLY_SPEND_CAP_USD:-40}
+      USER_AGENT: ${USER_AGENT:?}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Not long-running: the systemd timer runs `docker compose run --rm -T worker cycle run`.
+  worker:
+    <<: *backend
+    entrypoint: ["python", "-m", "app.worker"]
+    profiles: [worker]
+    environment:
+      DATABASE_URL: postgresql+psycopg://discovery_crawl_login:${CRAWL_DB_PASSWORD}@db:5432/discovery
+      SCORE_DATABASE_URL: postgresql+psycopg://discovery_score_login:${SCORE_DB_PASSWORD}@db:5432/discovery
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?}
+      PROVIDER_MONTHLY_SPEND_CAP_USD: ${PROVIDER_MONTHLY_SPEND_CAP_USD:-40}
+      USER_AGENT: ${USER_AGENT:?}
+      CYCLE_LOCAL_START: ${CYCLE_LOCAL_START:-02:00}
+      CYCLE_TIMEZONE: ${CYCLE_TIMEZONE:-UTC}
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-[]}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      ALLOW_PRIVATE_ADDRESSES: ${ALLOW_PRIVATE_ADDRESSES:-false}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Serves the built frontend and proxies /api to the API, with HTTPS from Let's Encrypt.
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+  # Uploads backups to DigitalOcean Spaces; bin/backup runs it.
+  backup:
+    image: amazon/aws-cli:2.37.3
+    profiles: [ops]
+    logging: *logging
+    environment:
+      AWS_ACCESS_KEY_ID: ${SPACES_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${SPACES_SECRET_ACCESS_KEY:-}
+      AWS_ENDPOINT_URL: https://${SPACES_REGION:-nyc3}.digitaloceanspaces.com
+      AWS_DEFAULT_REGION: us-east-1 # Spaces ignores it, but the CLI needs one
+      SPACES_BUCKET: ${SPACES_BUCKET:-}
+    volumes:
+      - ${BACKUP_DIR:-/var/tmp/betterweb-backups}:/backups
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

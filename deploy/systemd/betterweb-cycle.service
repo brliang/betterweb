@@ -1,0 +1,12 @@
+[Unit]
+Description=betterweb nightly crawl cycle
+Requires=docker.service
+After=docker.service
+OnFailure=betterweb-alert@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=@DEPLOY@
+ExecStart=/usr/bin/docker compose run --rm -T worker cycle run
+# Fetching stops after CYCLE_TIME_LIMIT_H (4 h); the later stages need far less.
+TimeoutStartSec=10h

@@ -12,6 +12,7 @@ from urllib.parse import urljoin
 
 import httpx2
 
+from app.crawl.addresses import PublicOnlyTransport, blocked_address
 from app.crawl.robots import MAX_ROBOTS_REDIRECTS
 from app.settings import Settings
 
@@ -39,7 +40,8 @@ class Outcome(StrEnum):
     NOT_MODIFIED = "not_modified"
     REDIRECT = "redirect"
     GONE = "gone"
-    """A 4xx (or other final answer): don't fetch this URL again."""
+    """A 4xx (or other final answer, such as a host on a non-public address): don't fetch
+    this URL again."""
     RETRY = "retry"
     """429, 5xx, a timeout or a network error: try again later, and slow down on this domain."""
     REJECTED = "rejected"
@@ -72,12 +74,17 @@ class FetchResult:
 def create_client(
     settings: Settings, *, transport: httpx2.AsyncBaseTransport | None = None
 ) -> httpx2.AsyncClient:
+    """The crawler's client. It connects only to public addresses (PLAN.md §14 Q6) unless
+    ALLOW_PRIVATE_ADDRESSES is set; tests pass a fake `transport`."""
+    limits = httpx2.Limits(max_connections=settings.global_concurrency)
+    if transport is None and not settings.allow_private_addresses:
+        transport = PublicOnlyTransport(limits=limits)
     return httpx2.AsyncClient(
         headers={"User-Agent": settings.user_agent, "Accept": ACCEPT},
         timeout=settings.fetch_timeout_s,
         follow_redirects=False,
         max_redirects=MAX_ROBOTS_REDIRECTS,
-        limits=httpx2.Limits(max_connections=settings.global_concurrency),
+        limits=limits,
         transport=transport,
     )
 
@@ -130,6 +137,8 @@ async def fetch(
         async with client.stream("GET", url, headers=headers) as response:
             return await _classify(response, url, max_bytes, now, allowed_types)
     except httpx2.RequestError as error:
+        if blocked_address(error):
+            return FetchResult(Outcome.GONE, detail="non-public address")
         return FetchResult(Outcome.RETRY, detail=type(error).__name__)
 
 

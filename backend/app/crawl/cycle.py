@@ -30,6 +30,15 @@ async def start_or_resume_cycle(session: AsyncSession, settings: Settings) -> Cr
     return cycle
 
 
+async def current_cycle(session: AsyncSession) -> CrawlCycle | None:
+    """The running cycle, else the latest one; None before the first cycle."""
+    running = sa.case((CrawlCycle.status == CycleStatus.RUNNING, 0), else_=1)
+    cycle: CrawlCycle | None = await session.scalar(
+        sa.select(CrawlCycle).order_by(running, CrawlCycle.id.desc()).limit(1)
+    )
+    return cycle
+
+
 async def finish_cycle(session: AsyncSession, cycle: CrawlCycle) -> None:
     cycle.status = CycleStatus.SUCCEEDED
     cycle.finished_at = datetime.now(UTC)

@@ -538,6 +538,11 @@ React + Vite + TypeScript, using only the generated orval client and hooks.
 - **Storage**: expect roughly 10–20 GB per million documents (text plus embeddings). Alert at 80% disk.
 - **Backups**: nightly `pg_dump` of the `usr` schema, which is small and critical. The `web` schema can be rebuilt by re-crawling, so back it up weekly.
 - **Observability**: structured JSON logs, per-stage timings in `crawl_cycles.stats`, and an alert (email is fine) when a cycle fails.
+- **As built (M10)**: see [DEPLOY.md](DEPLOY.md).
+  - **Hosting**: one DigitalOcean droplet (2 vCPU / 4 GB, about $24/month), the user's choice. `deploy/compose.yml` runs Postgres, the API, the worker and Caddy (static frontend, `/api` proxy, automatic HTTPS). `deploy/bin/install` also installs the systemd timers.
+  - **Schedule**: the crawl's timer runs at `CYCLE_LOCAL_START` in `CYCLE_TIMEZONE` (`cycle calendar` prints the schedule).
+  - **Backups**: one nightly dump of the whole database except `web.raw_pages` (pages waiting for extraction, which the next crawl refetches), uploaded to DigitalOcean Spaces and expired after 14 days. This replaces the separate `usr` and `web` backups: `usr` rows reference `web` documents, so a `usr` dump can't be restored without the matching `web` rows. The dump stays small, because raw pages are most of the database's size.
+  - **Alerts**: a systemd `OnFailure=` handler pipes the failed run's log lines into `alert send`, which emails them through Resend's HTTP API (DigitalOcean blocks outgoing SMTP). The same path covers backup failures, plus a daily check that alerts at 80% disk.
 
 ---
 
@@ -617,4 +622,7 @@ The V0 design already reserves the hooks each item uses.
 3. ~~Which hosted embedding model~~ **Resolved 2026-09-23:** Qwen3-Embedding-8B via OpenRouter at $0.01/1M tokens, 1024 dims. Worst case at 20k pages/night × ~700 tokens is ~420M tokens ≈ $4/month, well under the cap.
 4. Whether interest tag names sent to OpenRouter are acceptable under the project's privacy promise, or should be omitted from summary prompts. **As built (M9):** they are sent, only for users who opted in, as the settings copy says. Pinned sites, likes and account details are not.
 5. Project name and the bot contact page (required before the first real crawl). **Bot name resolved 2026-09-23:** `bribot`. The worker refuses to run a cycle while `USER_AGENT` points at the `example.invalid` placeholder contact URL. **Contact page resolved 2026-09-23:** [docs/bot.md](bot.md), published when the repo went public; contact is through GitHub issues. The settings default stays the placeholder so that other deployments of the code name their own contact page; ours sets `USER_AGENT` in its environment.
-6. **Before deploying (M10):** the crawler fetches any http(s) URL it finds, including private and loopback addresses (`10.x`, `127.0.0.1`, `169.254.169.254`), so a link on a crawled page could make it request services on the VM. It needs to refuse non-public addresses (after DNS resolution, and on every redirect) behind a setting that local end-to-end checks can turn off.
+6. ~~Before deploying (M10): the crawler fetches any http(s) URL it finds, including private and loopback addresses (`10.x`, `127.0.0.1`, `169.254.169.254`), so a link on a crawled page could make it request services on the VM. It needs to refuse non-public addresses (after DNS resolution, and on every redirect) behind a setting that local end-to-end checks can turn off.~~ **Resolved in M10** (`app.crawl.addresses`):
+   - The crawler's connections resolve each host themselves and connect only to the addresses they checked, so DNS can't point a checked name somewhere else. The check covers robots.txt and every redirect target, because each is a new request.
+   - A host with any non-public address (loopback, private, link-local, CGNAT, reserved, multicast, IPv4-mapped forms included) fails as a connection error. robots.txt then counts as unreachable, so nothing on that host is fetched, and a page request there is dropped from the frontier.
+   - `ALLOW_PRIVATE_ADDRESSES=true` turns the check off for local checks against a test server.

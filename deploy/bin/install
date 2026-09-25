@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Builds and starts the stack, loads the topic taxonomy, and installs the systemd units.
+# Run as root from a checkout on the server, first after filling in deploy/.env, and again
+# after every `git pull` (docs/DEPLOY.md).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+deploy=$(pwd)
+
+[[ -f .env ]] || { echo "deploy/.env is missing; copy .env.example and fill it in" >&2; exit 1; }
+chmod 600 .env
+
+docker compose build
+docker compose up -d --remove-orphans
+# Idempotent; embedding costs a few cents the first time and nothing after.
+docker compose run --rm -T worker taxonomy seed
+docker compose run --rm -T worker taxonomy embed
+
+calendar=$(docker compose run --rm --no-deps -T worker cycle calendar)
+timezone=${calendar##* } # "*-*-* 01:00:00 America/New_York"
+for unit in systemd/*; do
+  sed -e "s|@DEPLOY@|$deploy|g" -e "s|@CALENDAR@|$calendar|g" -e "s|@TIMEZONE@|$timezone|g" \
+    "$unit" \
+    >"/etc/systemd/system/$(basename "$unit")"
+done
+systemctl daemon-reload
+systemctl enable --now betterweb-cycle.timer betterweb-backup.timer betterweb-disk.timer
+systemctl list-timers 'betterweb-*'

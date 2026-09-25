@@ -1,0 +1,11 @@
+[Unit]
+Description=Start the betterweb crawl cycle nightly
+
+[Timer]
+# From `python -m app.worker cycle calendar` (CYCLE_LOCAL_START in CYCLE_TIMEZONE).
+OnCalendar=@CALENDAR@
+# Run at boot if the machine was off at the scheduled time.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

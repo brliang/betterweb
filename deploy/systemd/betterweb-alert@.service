@@ -1,0 +1,9 @@
+[Unit]
+Description=Email an alert that %i failed
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=@DEPLOY@
+ExecStart=@DEPLOY@/bin/alert-unit %i

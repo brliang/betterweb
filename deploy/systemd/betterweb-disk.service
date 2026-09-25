@@ -1,0 +1,10 @@
+[Unit]
+Description=Alert when the disk is 80% full
+Requires=docker.service
+After=docker.service
+OnFailure=betterweb-alert@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=@DEPLOY@
+ExecStart=@DEPLOY@/bin/check-disk 80
